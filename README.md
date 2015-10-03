@@ -1,6 +1,6 @@
 # graphql-go-handler
 
-Golang HTTP.Handler for graphl-go
+Golang HTTP.Handler for [graphl-go](https://github.com/chris-ramon/graphql-go)
 
 ### Usage
 
@@ -63,6 +63,11 @@ depending on the provided `Content-Type` header.
   * **`application/graphql`**: The POST body will be parsed as GraphQL
     query string, which provides the `query` parameter.
 
+
+### Examples
+- [golang-graphql-playground](https://github.com/sogko/golang-graphql-playground)
+- [golang-relay-starter-kit](https://github.com/sogko/golang-relay-starter-kit)
+- [todomvc-relay-go](https://github.com/sogko/todomvc-relay-go)
 
 ### Test
 ```bash

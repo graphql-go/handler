@@ -10,18 +10,17 @@ package main
 import (
 	"net/http"
 	"github.com/sogko/graphql-go-handler"
-
 )
 
 func main() {
 
-  // define GraphQL schema using relay library helpers
-  schema := types.NewGraphQLSchema(...)
+	// define GraphQL schema using relay library helpers
+	schema := types.NewGraphQLSchema(...)
   
 	h := gqlhandler.New(&gqlhandler.Config{
-  		Schema: &starwars.Schema,
-  		Pretty: true,
-  })
+		Schema: &starwars.Schema,
+		Pretty: true,
+	})
 	
 	// serve HTTP
 	http.Handle("/graphql", h)

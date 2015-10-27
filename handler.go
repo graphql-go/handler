@@ -1301,5 +1301,5 @@ var HandleGraphiQL = func(w http.ResponseWriter, r *http.Request) {
 // The rootObject will be available in all your resolve functions in schema
 func Init(sch types.GraphQLSchema, rootObject map[string]interface{}) {
 	gqlschema = sch
-	rootValue = root
+	rootValue = rootObject
 }

@@ -1,8 +1,11 @@
-# graphql-go-handler
+# Golang HTTP Handler
 
-Golang HTTP.Handler for [graphl-go](https://github.com/chris-ramon/graphql-go)
+HTTP Handler for [Graphl Go](https://github.com/chris-ramon/graphql-go)
 
-### Usage
+It has support only for POST requests of content type `application/json`.
+It has [GraphiQL](https://github.com/graphql/graphiql) inbuilt.
+
+## Usage
 
 ```go
 package main
@@ -13,22 +16,32 @@ import (
 )
 
 func main() {
-
-	// define GraphQL schema using relay library helpers
-	schema := types.NewGraphQLSchema(...)
-  
-	h := gqlhandler.New(&gqlhandler.Config{
-		Schema: &starwars.Schema,
-		Pretty: true,
+        gqlhandler.Init(schema.Load(), map[string]interface{}{
+		"property_1": "user_1",
+		"ctx":  "my_ctx_object",
 	})
-	
-	// serve HTTP
-	http.Handle("/graphql", h)
-	http.ListenAndServe(":8080", nil)
+	http.HandleFunc("/graphql", gqlhandler.HandleGraphQL)
+	http.HandleFunc("/graphiql", gqlhandler.HandleGraphiQL)
+	port := ":3001"
+	println("GraphQL server starting up on http://localhost" + port)
+	err := http.ListenAndServe(port, nil)
+	if err != nil {
+		panic("ListenAndServe failed " + err.Error())
+	}
 }
 ```
 
 ### Details
+
+```go
+gqlhandler.Init(schema GraphQLSchema, rootObject map[string]interface{})
+
+//The rootObject will be available in all your resolve functions in your Schemas like this
+// You can get it like this
+Resolve: func(p types.GQLFRParams) interface{} {
+rootmap := p.Info.RootValue.(map[string]interface{})
+}
+```
 
 The handler will accept requests with
 the parameters:
@@ -43,33 +56,12 @@ the parameters:
     provided, an 400 error will be returned if the `query` contains multiple
     named operations.
 
-GraphQL will first look for each parameter in the URL's query-string:
-
-```
-/graphql?query=query+getUser($id:ID){user(id:$id){name}}&variables={"id":"4"}
-```
-
-If not found in the query-string, it will look in the POST request body.
+GraphQL will look in the POST request body.
 The `handler` will interpret it
 depending on the provided `Content-Type` header.
 
   * **`application/json`**: the POST body will be parsed as a JSON
     object of parameters.
 
-  * **`application/x-www-form-urlencoded`**: this POST body will be
-    parsed as a url-encoded string of key-value pairs.
-
   * **`application/graphql`**: The POST body will be parsed as GraphQL
     query string, which provides the `query` parameter.
-
-
-### Examples
-- [golang-graphql-playground](https://github.com/sogko/golang-graphql-playground)
-- [golang-relay-starter-kit](https://github.com/sogko/golang-relay-starter-kit)
-- [todomvc-relay-go](https://github.com/sogko/todomvc-relay-go)
-
-### Test
-```bash
-$ go get github.com/sogko/graphql-go-handler
-$ go build && go test ./...
-```

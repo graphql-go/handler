@@ -2,7 +2,7 @@
 
 HTTP Handler for [Graphl Go](https://github.com/chris-ramon/graphql-go)
 
-It has support only for POST requests of content type `application/json`.
+It has support only for POST requests of content type `application/json`.  
 It has [GraphiQL](https://github.com/graphql/graphiql) inbuilt.
 
 ## Usage

@@ -1,83 +1,43 @@
 package gqlhandler_test
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
-	"github.com/chris-ramon/graphql-go/testutil"
-	"github.com/chris-ramon/graphql-go/types"
 	"github.com/sogko/graphql-go-handler"
 	"github.com/sogko/graphql-relay-go/examples/starwars"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
-	"strings"
 	"testing"
 )
 
-func decodeResponse(t *testing.T, recorder *httptest.ResponseRecorder) *types.GraphQLResult {
-	// clone request body reader so that we can have a nicer error message
+func executeTest(t *testing.T, req *http.Request, expected string) {
+	resp := httptest.NewRecorder()
+	gqlhandler.Init(starwars.Schema, map[string]interface{}{})
+	gqlhandler.HandleGraphQL(resp, req)
 	bodyString := ""
-	var target types.GraphQLResult
-	if b, err := ioutil.ReadAll(recorder.Body); err == nil {
+	if b, err := ioutil.ReadAll(resp.Body); err == nil {
 		bodyString = string(b)
 	}
-	readerClone := strings.NewReader(bodyString)
-
-	decoder := json.NewDecoder(readerClone)
-	err := decoder.Decode(&target)
-	if err != nil {
-		t.Fatalf("DecodeResponseToType(): %v \n%v", err.Error(), bodyString)
+	if bodyString != expected {
+		t.Fatalf("\nExpected: %s \nActually: %s", expected, bodyString)
 	}
-	return &target
-}
-func executeTest(t *testing.T, h *gqlhandler.Handler, req *http.Request) (*types.GraphQLResult, *httptest.ResponseRecorder) {
-	resp := httptest.NewRecorder()
-	h.ServeHTTP(resp, req)
-	result := decodeResponse(t, resp)
-	return result, resp
 }
 
 func TestHandler_BasicQuery(t *testing.T) {
-
-	expected := &types.GraphQLResult{
-		Data: map[string]interface{}{
-			"rebels": map[string]interface{}{
-				"id":   "RmFjdGlvbjox",
-				"name": "Alliance to Restore the Republic",
-			},
-		},
-	}
 	queryString := `query=query RebelsShipsQuery { rebels { id, name } }`
+	expected := "Only POST requests are allowed\n"
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
-
-	h := gqlhandler.New(&gqlhandler.Config{
-		Schema: &starwars.Schema,
-		Pretty: true,
-	})
-	result, resp := executeTest(t, h, req)
-	if resp.Code != http.StatusOK {
-		t.Fatalf("unexpected server response %v", resp.Code)
-	}
-	if !reflect.DeepEqual(result, expected) {
-		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
-	}
+	executeTest(t, req, expected)
 }
-func TestHandler_Params_NilParams(t *testing.T) {
-	defer func() {
-		if r := recover(); r != nil {
-			if str, ok := r.(string); ok {
-				if str != "undefined graphQL schema" {
-					t.Fatalf("unexpected error, got %v", r)
-				}
-				// test passed
-				return
-			}
-			t.Fatalf("unexpected error, got %v", r)
 
-		}
-		t.Fatalf("expected to panic, did not panic")
-	}()
-	_ = gqlhandler.New(nil)
-
+func TestHandler_BasicPost(t *testing.T) {
+	body := `
+	{
+		"query": "query RebelsShipsQuery { rebels { name } }"
+	}`
+	expected := `{"data":{"rebels":{"name":"Alliance to Restore the Republic"}}}`
+	req, _ := http.NewRequest("POST", "/graphql", bytes.NewBufferString(body))
+	req.Header.Add("Content-Type", "application/json")
+	executeTest(t, req, expected)
 }

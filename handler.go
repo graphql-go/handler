@@ -5,17 +5,20 @@ import (
 	"errors"
 	"github.com/chris-ramon/graphql-go"
 	"github.com/chris-ramon/graphql-go/types"
-	"github.com/gorilla/schema"
 	"io/ioutil"
 	"net/http"
 	"strings"
 )
 
 const (
-	ContentTypeJSON           = "application/json"
-	ContentTypeGraphQL        = "application/graphql"
-	ContentTypeFormUrlEncoded = "application/x-www-form-urlencoded"
-	ContentTypeHTML           = "text/html"
+	ContentTypeJSON    = "application/json"
+	ContentTypeGraphQL = "application/graphql"
+)
+
+var (
+	ErrorOnlyPostAllowed  = errors.New("Only POST requests are allowed")
+	ErrorRequestBodyEmpty = errors.New("The request body should not be empty")
+	ErrorContentType      = errors.New("Only Content-Type's application/json and application/graphql are supported")
 )
 
 const app_css = `
@@ -1207,8 +1210,6 @@ Loading...
 </html>
 `
 
-var decoder = schema.NewDecoder()
-
 type requestOptions struct {
 	Query         string                 `json:"query" url:"query" schema:"query"`
 	Variables     map[string]interface{} `json:"variables" url:"variables" schema:"variables"`
@@ -1224,10 +1225,10 @@ type requestOptionsCompatibility struct {
 
 func getRequestOptions(r *http.Request) (*requestOptions, error) {
 	if r.Method != "POST" {
-		return nil, errors.New("You can only use POST requests")
+		return nil, ErrorOnlyPostAllowed
 	}
 	if r.Body == nil {
-		return nil, errors.New("The request body is empty")
+		return nil, ErrorRequestBodyEmpty
 	}
 	// TODO: improve Content-Type handling
 	contentTypeStr := r.Header.Get("Content-Type")
@@ -1241,20 +1242,7 @@ func getRequestOptions(r *http.Request) (*requestOptions, error) {
 			return nil, err
 		}
 		return &requestOptions{Query: string(body)}, nil
-	case ContentTypeFormUrlEncoded:
-		var opts requestOptions
-		err := r.ParseForm()
-		if err != nil {
-			return nil, err
-		}
-		err = decoder.Decode(&opts, r.PostForm)
-		if err != nil {
-			return nil, err
-		}
-		return &opts, nil
 	case ContentTypeJSON:
-		fallthrough
-	default:
 		var opts requestOptions
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
@@ -1269,12 +1257,15 @@ func getRequestOptions(r *http.Request) (*requestOptions, error) {
 			json.Unmarshal([]byte(optsCompatible.Variables), &opts.Variables)
 		}
 		return &opts, nil
+	default:
+		return nil, ErrorContentType
 	}
 }
 
 var gqlschema types.GraphQLSchema
 var rootValue map[string]interface{}
 
+// The Graphql handler which parses and executes the request
 var HandleGraphQL = func(w http.ResponseWriter, r *http.Request) {
 	opts, err := getRequestOptions(r)
 	if err != nil {
@@ -1301,11 +1292,14 @@ var HandleGraphQL = func(w http.ResponseWriter, r *http.Request) {
 	w.Write(result)
 }
 
+// The Graphiql Handler which response
 var HandleGraphiQL = func(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(graphiql_template))
 }
 
-func Init(sch types.GraphQLSchema, root map[string]interface{}) {
+// Initialze the handler with a graphql schema and root object
+// The rootObject will be available in all your resolve functions in schema
+func Init(sch types.GraphQLSchema, rootObject map[string]interface{}) {
 	gqlschema = sch
 	rootValue = root
 }

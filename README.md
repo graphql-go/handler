@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-        gqlhandler.Init(schema.Load(), map[string]interface{}{
+	gqlhandler.Init(schema.Load(), map[string]interface{}{
 		"property_1": "user_1",
 		"ctx":  "my_ctx_object",
 	})
@@ -39,7 +39,7 @@ gqlhandler.Init(schema GraphQLSchema, rootObject map[string]interface{})
 //The rootObject will be available in all your resolve functions in your Schemas like this
 // You can get it like this
 Resolve: func(p types.GQLFRParams) interface{} {
-rootmap := p.Info.RootValue.(map[string]interface{})
+	rootmap := p.Info.RootValue.(map[string]interface{})
 }
 ```
 

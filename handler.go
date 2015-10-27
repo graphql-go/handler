@@ -1292,7 +1292,7 @@ var HandleGraphQL = func(w http.ResponseWriter, r *http.Request) {
 	w.Write(result)
 }
 
-// The Graphiql Handler which response
+// The Graphiql Handler which sends the Graphiql Playground html
 var HandleGraphiQL = func(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(graphiql_template))
 }

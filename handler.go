@@ -2,25 +2,25 @@ package gqlhandler
 
 import (
 	"encoding/json"
-	"github.com/chris-ramon/graphql-go"
-	"github.com/chris-ramon/graphql-go/types"
-	"github.com/gorilla/schema"
-	"github.com/unrolled/render"
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	"github.com/chris-ramon/graphql"
+	"github.com/gorilla/schema"
+	"github.com/unrolled/render"
 )
 
 const (
 	ContentTypeJSON           = "application/json"
 	ContentTypeGraphQL        = "application/graphql"
-	ContentTypeFormUrlEncoded = "application/x-www-form-urlencoded"
+	ContentTypeFormURLEncoded = "application/x-www-form-urlencoded"
 )
 
 var decoder = schema.NewDecoder()
 
 type Handler struct {
-	Schema *types.GraphQLSchema
+	Schema *graphql.Schema
 	render *render.Render
 }
 type requestOptions struct {
@@ -73,7 +73,7 @@ func getRequestOptions(r *http.Request) *requestOptions {
 		return &requestOptions{
 			Query: string(body),
 		}
-	case ContentTypeFormUrlEncoded:
+	case ContentTypeFormURLEncoded:
 		var opts requestOptions
 		err := r.ParseForm()
 		if err != nil {
@@ -111,14 +111,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	opts := getRequestOptions(r)
 
 	// execute graphql query
-	resultChannel := make(chan *types.GraphQLResult)
-	params := gql.GraphqlParams{
+	resultChannel := make(chan *graphql.Result)
+	params := graphql.Params{
 		Schema:         *h.Schema,
 		RequestString:  opts.Query,
 		VariableValues: opts.Variables,
 		OperationName:  opts.OperationName,
 	}
-	go gql.Graphql(params, resultChannel)
+	go graphql.Graphql(params, resultChannel)
 	result := <-resultChannel
 
 	// render result
@@ -126,7 +126,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type Config struct {
-	Schema *types.GraphQLSchema
+	Schema *graphql.Schema
 	Pretty bool
 }
 
@@ -142,7 +142,7 @@ func New(p *Config) *Handler {
 		p = NewConfig()
 	}
 	if p.Schema == nil {
-		panic("undefined graphQL schema")
+		panic("undefined GraphQL schema")
 	}
 	r := render.New(render.Options{
 		IndentJSON: p.Pretty,

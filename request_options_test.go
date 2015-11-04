@@ -3,11 +3,12 @@ package gqlhandler
 import (
 	"bytes"
 	"fmt"
-	"github.com/chris-ramon/graphql-go/testutil"
 	"net/http"
 	"net/url"
 	"reflect"
 	"testing"
+
+	"github.com/chris-ramon/graphql/testutil"
 )
 
 func TestRequestOptions_GET_BasicQueryString(t *testing.T) {

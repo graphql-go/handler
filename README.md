@@ -1,6 +1,10 @@
 # graphql-go-handler
 
-Golang HTTP.Handler for [graphl-go](https://github.com/chris-ramon/graphql-go)
+Golang HTTP.Handler for [graphl-go](https://github.com/chris-ramon/graphql)
+
+### Notes:
+This is based on alpha version of `graphql-go` and `graphql-relay-go`. 
+Be sure to watch both repositories for latest changes.
 
 ### Usage
 
@@ -15,10 +19,10 @@ import (
 func main() {
 
 	// define GraphQL schema using relay library helpers
-	schema := types.NewGraphQLSchema(...)
+	schema := graphql.NewSchema(...)
   
 	h := gqlhandler.New(&gqlhandler.Config{
-		Schema: &starwars.Schema,
+		Schema: schema,
 		Pretty: true,
 	})
 	

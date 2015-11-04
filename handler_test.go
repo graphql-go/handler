@@ -3,22 +3,23 @@ package gqlhandler_test
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/chris-ramon/graphql-go/testutil"
-	"github.com/chris-ramon/graphql-go/types"
-	"github.com/sogko/graphql-go-handler"
-	"github.com/sogko/graphql-relay-go/examples/starwars"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/chris-ramon/graphql"
+	"github.com/chris-ramon/graphql/testutil"
+	"github.com/sogko/graphql-go-handler"
+	"github.com/sogko/graphql-relay-go/examples/starwars"
 )
 
-func decodeResponse(t *testing.T, recorder *httptest.ResponseRecorder) *types.GraphQLResult {
+func decodeResponse(t *testing.T, recorder *httptest.ResponseRecorder) *graphql.Result {
 	// clone request body reader so that we can have a nicer error message
 	bodyString := ""
-	var target types.GraphQLResult
+	var target graphql.Result
 	if b, err := ioutil.ReadAll(recorder.Body); err == nil {
 		bodyString = string(b)
 	}
@@ -31,7 +32,7 @@ func decodeResponse(t *testing.T, recorder *httptest.ResponseRecorder) *types.Gr
 	}
 	return &target
 }
-func executeTest(t *testing.T, h *gqlhandler.Handler, req *http.Request) (*types.GraphQLResult, *httptest.ResponseRecorder) {
+func executeTest(t *testing.T, h *gqlhandler.Handler, req *http.Request) (*graphql.Result, *httptest.ResponseRecorder) {
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
 	result := decodeResponse(t, resp)
@@ -40,7 +41,7 @@ func executeTest(t *testing.T, h *gqlhandler.Handler, req *http.Request) (*types
 
 func TestHandler_BasicQuery(t *testing.T) {
 
-	expected := &types.GraphQLResult{
+	expected := &graphql.Result{
 		Data: map[string]interface{}{
 			"rebels": map[string]interface{}{
 				"id":   "RmFjdGlvbjox",
@@ -67,7 +68,7 @@ func TestHandler_Params_NilParams(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
 			if str, ok := r.(string); ok {
-				if str != "undefined graphQL schema" {
+				if str != "undefined GraphQL schema" {
 					t.Fatalf("unexpected error, got %v", r)
 				}
 				// test passed

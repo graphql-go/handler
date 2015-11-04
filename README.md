@@ -77,3 +77,5 @@ depending on the provided `Content-Type` header.
 $ go get github.com/sogko/graphql-go-handler
 $ go build && go test ./...
 ```
+### Changelog
+For recent changes, see [Changelog](./CHANGELOG.md)

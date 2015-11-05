@@ -1,4 +1,4 @@
-package gqlhandler
+package handler
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/chris-ramon/graphql/testutil"
+	"github.com/graphql-go/graphql/testutil"
 )
 
 func TestRequestOptions_GET_BasicQueryString(t *testing.T) {

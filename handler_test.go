@@ -1,4 +1,4 @@
-package gqlhandler_test
+package handler_test
 
 import (
 	"encoding/json"
@@ -10,10 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/chris-ramon/graphql"
-	"github.com/chris-ramon/graphql/testutil"
-	"github.com/sogko/graphql-go-handler"
-	"github.com/sogko/graphql-relay-go/examples/starwars"
+	"github.com/graphql-go/graphql"
+	"github.com/graphql-go/graphql/testutil"
+	"github.com/graphql-go/handler"
+	"github.com/graphql-go/relay/examples/starwars" // TODO: remove this dependency
 )
 
 func decodeResponse(t *testing.T, recorder *httptest.ResponseRecorder) *graphql.Result {
@@ -32,7 +32,7 @@ func decodeResponse(t *testing.T, recorder *httptest.ResponseRecorder) *graphql.
 	}
 	return &target
 }
-func executeTest(t *testing.T, h *gqlhandler.Handler, req *http.Request) (*graphql.Result, *httptest.ResponseRecorder) {
+func executeTest(t *testing.T, h *handler.Handler, req *http.Request) (*graphql.Result, *httptest.ResponseRecorder) {
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
 	result := decodeResponse(t, resp)
@@ -52,7 +52,7 @@ func TestHandler_BasicQuery(t *testing.T) {
 	queryString := `query=query RebelsShipsQuery { rebels { id, name } }`
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
 
-	h := gqlhandler.New(&gqlhandler.Config{
+	h := handler.New(&handler.Config{
 		Schema: &starwars.Schema,
 		Pretty: true,
 	})
@@ -79,6 +79,6 @@ func TestHandler_Params_NilParams(t *testing.T) {
 		}
 		t.Fatalf("expected to panic, did not panic")
 	}()
-	_ = gqlhandler.New(nil)
+	_ = handler.New(nil)
 
 }

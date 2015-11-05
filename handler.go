@@ -1,4 +1,4 @@
-package gqlhandler
+package handler
 
 import (
 	"encoding/json"
@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/chris-ramon/graphql"
 	"github.com/gorilla/schema"
+	"github.com/graphql-go/graphql"
 	"github.com/unrolled/render"
 )
 
@@ -111,15 +111,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	opts := getRequestOptions(r)
 
 	// execute graphql query
-	resultChannel := make(chan *graphql.Result)
 	params := graphql.Params{
 		Schema:         *h.Schema,
 		RequestString:  opts.Query,
 		VariableValues: opts.Variables,
 		OperationName:  opts.OperationName,
 	}
-	go graphql.Graphql(params, resultChannel)
-	result := <-resultChannel
+	result := graphql.Graphql(params)
 
 	// render result
 	h.render.JSON(w, http.StatusOK, result)

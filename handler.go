@@ -117,7 +117,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		VariableValues: opts.Variables,
 		OperationName:  opts.OperationName,
 	}
-	result := graphql.Graphql(params)
+	result := graphql.Do(params)
 
 	// render result
 	h.render.JSON(w, http.StatusOK, result)

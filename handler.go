@@ -23,7 +23,7 @@ type Handler struct {
 	Schema *graphql.Schema
 	render *render.Render
 }
-type requestOptions struct {
+type RequestOptions struct {
 	Query         string                 `json:"query" url:"query" schema:"query"`
 	Variables     map[string]interface{} `json:"variables" url:"variables" schema:"variables"`
 	OperationName string                 `json:"operationName" url:"operationName" schema:"operationName"`
@@ -36,7 +36,8 @@ type requestOptionsCompatibility struct {
 	OperationName string `json:"operationName" url:"operationName" schema:"operationName"`
 }
 
-func getRequestOptions(r *http.Request) *requestOptions {
+// RequestOptions Parses a http.Request into GraphQL request options struct
+func NewRequestOptions(r *http.Request) *RequestOptions {
 
 	query := r.URL.Query().Get("query")
 	if query != "" {
@@ -46,17 +47,17 @@ func getRequestOptions(r *http.Request) *requestOptions {
 		variablesStr := r.URL.Query().Get("variables")
 		json.Unmarshal([]byte(variablesStr), variables)
 
-		return &requestOptions{
+		return &RequestOptions{
 			Query:         query,
 			Variables:     variables,
 			OperationName: r.URL.Query().Get("operationName"),
 		}
 	}
 	if r.Method != "POST" {
-		return &requestOptions{}
+		return &RequestOptions{}
 	}
 	if r.Body == nil {
-		return &requestOptions{}
+		return &RequestOptions{}
 	}
 
 	// TODO: improve Content-Type handling
@@ -68,26 +69,26 @@ func getRequestOptions(r *http.Request) *requestOptions {
 	case ContentTypeGraphQL:
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			return &requestOptions{}
+			return &RequestOptions{}
 		}
-		return &requestOptions{
+		return &RequestOptions{
 			Query: string(body),
 		}
 	case ContentTypeFormURLEncoded:
-		var opts requestOptions
+		var opts RequestOptions
 		err := r.ParseForm()
 		if err != nil {
-			return &requestOptions{}
+			return &RequestOptions{}
 		}
 		err = decoder.Decode(&opts, r.PostForm)
 		if err != nil {
-			return &requestOptions{}
+			return &RequestOptions{}
 		}
 		return &opts
 	case ContentTypeJSON:
 		fallthrough
 	default:
-		var opts requestOptions
+		var opts RequestOptions
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			return &opts
@@ -108,7 +109,7 @@ func getRequestOptions(r *http.Request) *requestOptions {
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// get query
-	opts := getRequestOptions(r)
+	opts := NewRequestOptions(r)
 
 	// execute graphql query
 	params := graphql.Params{

@@ -14,6 +14,7 @@ import (
 	"github.com/graphql-go/graphql/testutil"
 	"github.com/graphql-go/handler"
 	"github.com/graphql-go/relay/examples/starwars" // TODO: remove this dependency
+	"golang.org/x/net/context"
 )
 
 func decodeResponse(t *testing.T, recorder *httptest.ResponseRecorder) *graphql.Result {
@@ -37,6 +38,49 @@ func executeTest(t *testing.T, h *handler.Handler, req *http.Request) (*graphql.
 	h.ServeHTTP(resp, req)
 	result := decodeResponse(t, resp)
 	return result, resp
+}
+
+func TestContextPropagated(t *testing.T) {
+	myNameQuery := graphql.NewObject(graphql.ObjectConfig{
+		Name: "Query",
+		Fields: graphql.Fields{
+			"name": &graphql.Field{
+				Name: "name",
+				Type: graphql.String,
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					return p.Context.Value("name"), nil
+				},
+			},
+		},
+	})
+	myNameSchema, err := graphql.NewSchema(graphql.SchemaConfig{myNameQuery, nil})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := &graphql.Result{
+		Data: map[string]interface{}{
+			"name": "context-data",
+		},
+	}
+	queryString := `query={name}`
+	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
+
+	h := handler.New(&handler.Config{
+		Schema: &myNameSchema,
+		Pretty: true,
+	})
+
+	ctx := context.WithValue(context.Background(), "name", "context-data")
+	resp := httptest.NewRecorder()
+	h.ContextHandler(ctx, resp, req)
+	result := decodeResponse(t, resp)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("unexpected server response %v", resp.Code)
+	}
+	if !reflect.DeepEqual(result, expected) {
+		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
+	}
 }
 
 func TestHandler_BasicQuery(t *testing.T) {

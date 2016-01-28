@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/schema"
 	"github.com/graphql-go/graphql"
 	"github.com/unrolled/render"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -105,9 +106,9 @@ func NewRequestOptions(r *http.Request) *RequestOptions {
 	}
 }
 
-// ServeHTTP provides an entry point into executing graphQL queries
-func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-
+// ContextHandler provides an entrypoint into executing graphQL queries with a
+// user-provided context.
+func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	// get query
 	opts := NewRequestOptions(r)
 
@@ -117,11 +118,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		RequestString:  opts.Query,
 		VariableValues: opts.Variables,
 		OperationName:  opts.OperationName,
+		Context:        ctx,
 	}
 	result := graphql.Do(params)
 
 	// render result
 	h.render.JSON(w, http.StatusOK, result)
+}
+
+// ServeHTTP provides an entrypoint into executing graphQL queries.
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.ContextHandler(context.Background(), w, r)
 }
 
 type Config struct {

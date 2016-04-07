@@ -8,7 +8,6 @@ import (
 
 	"github.com/gorilla/schema"
 	"github.com/graphql-go/graphql"
-	"github.com/unrolled/render"
 	"golang.org/x/net/context"
 )
 
@@ -22,7 +21,8 @@ var decoder = schema.NewDecoder()
 
 type Handler struct {
 	Schema *graphql.Schema
-	render *render.Render
+	
+	pretty bool
 }
 type RequestOptions struct {
 	Query         string                 `json:"query" url:"query" schema:"query"`
@@ -122,8 +122,18 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 	}
 	result := graphql.Do(params)
 
-	// render result
-	h.render.JSON(w, http.StatusOK, result)
+	
+	if h.pretty {
+		w.WriteHeader(http.StatusOK)
+		buff, _ := json.MarshalIndent(result, "", "\t")
+
+		w.Write(buff)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		buff, _ := json.Marshal(result)
+	
+		w.Write(buff)
+	}
 }
 
 // ServeHTTP provides an entrypoint into executing graphQL queries.
@@ -150,11 +160,9 @@ func New(p *Config) *Handler {
 	if p.Schema == nil {
 		panic("undefined GraphQL schema")
 	}
-	r := render.New(render.Options{
-		IndentJSON: p.Pretty,
-	})
+
 	return &Handler{
 		Schema: p.Schema,
-		render: r,
+		pretty: p.Pretty,
 	}
 }

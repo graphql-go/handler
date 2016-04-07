@@ -83,8 +83,7 @@ func TestContextPropagated(t *testing.T) {
 	}
 }
 
-func TestHandler_BasicQuery(t *testing.T) {
-
+func TestHandler_BasicQuery_Pretty(t *testing.T) {
 	expected := &graphql.Result{
 		Data: map[string]interface{}{
 			"rebels": map[string]interface{}{
@@ -108,6 +107,32 @@ func TestHandler_BasicQuery(t *testing.T) {
 		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
 	}
 }
+
+func TestHandler_BasicQuery_Ugly(t *testing.T) {
+	expected := &graphql.Result{
+		Data: map[string]interface{}{
+			"rebels": map[string]interface{}{
+				"id":   "RmFjdGlvbjox",
+				"name": "Alliance to Restore the Republic",
+			},
+		},
+	}
+	queryString := `query=query RebelsShipsQuery { rebels { id, name } }`
+	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
+
+	h := handler.New(&handler.Config{
+		Schema: &starwars.Schema,
+		Pretty: false,
+	})
+	result, resp := executeTest(t, h, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("unexpected server response %v", resp.Code)
+	}
+	if !reflect.DeepEqual(result, expected) {
+		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
+	}
+}
+
 func TestHandler_Params_NilParams(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {

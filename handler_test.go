@@ -150,3 +150,48 @@ func TestHandler_Params_NilParams(t *testing.T) {
 	_ = handler.New(nil)
 
 }
+
+func TestHandler_Params_RootObject(t *testing.T) {
+	rootObject := map[string]interface{}{
+		"foo": "bar",
+	}
+
+	myNameQuery := graphql.NewObject(graphql.ObjectConfig{
+		Name: "Query",
+		Fields: graphql.Fields{
+			"name": &graphql.Field{
+				Name: "name",
+				Type: graphql.String,
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					return p.Info.RootValue.(map[string]interface{})["foo"], nil
+				},
+			},
+		},
+	})
+	myNameSchema, err := graphql.NewSchema(graphql.SchemaConfig{myNameQuery, nil})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := &graphql.Result{
+		Data: map[string]interface{}{
+			"name": rootObject["foo"],
+		},
+	}
+	queryString := `query={name}`
+	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
+
+	h := handler.New(&handler.Config{
+		Schema:     &myNameSchema,
+		RootObject: rootObject,
+		Pretty:     true,
+	})
+
+	result, resp := executeTest(t, h, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("unexpected server response %v", resp.Code)
+	}
+	if !reflect.DeepEqual(result, expected) {
+		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
+	}
+}

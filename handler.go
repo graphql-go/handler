@@ -19,9 +19,10 @@ const (
 )
 
 type Handler struct {
-	Schema     *graphql.Schema
-	pretty     bool
-	graphiql   bool
+	Schema *graphql.Schema
+	RootObject map[string]interface{}
+	pretty   bool
+	graphiql bool
 	playground bool
 }
 type RequestOptions struct {
@@ -126,6 +127,7 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 		RequestString:  opts.Query,
 		VariableValues: opts.Variables,
 		OperationName:  opts.OperationName,
+		RootObject:     h.RootObject,
 		Context:        ctx,
 	}
 	result := graphql.Do(params)
@@ -170,17 +172,19 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type Config struct {
-	Schema     *graphql.Schema
-	Pretty     bool
-	GraphiQL   bool
+	Schema   *graphql.Schema
+	RootObject map[string]interface{}
+	Pretty   bool
+	GraphiQL bool
 	Playground bool
 }
 
 func NewConfig() *Config {
 	return &Config{
-		Schema:     nil,
-		Pretty:     true,
-		GraphiQL:   true,
+		Schema:   nil,
+		RootObject: map[string]interface{}{},
+		Pretty:   true,
+		GraphiQL: true,
 		Playground: false,
 	}
 }
@@ -194,9 +198,10 @@ func New(p *Config) *Handler {
 	}
 
 	return &Handler{
-		Schema:     p.Schema,
-		pretty:     p.Pretty,
-		graphiql:   p.GraphiQL,
+		Schema:   p.Schema,
+		RootObject: p.RootObject,
+		pretty:   p.Pretty,
+		graphiql: p.GraphiQL,
 		playground: p.Playground,
 	}
 }

@@ -20,7 +20,7 @@ const (
 
 type Handler struct {
 	Schema *graphql.Schema
-	
+
 	pretty bool
 }
 type RequestOptions struct {
@@ -42,7 +42,7 @@ func getFromForm(values url.Values) *RequestOptions {
 		// get variables map
 		var variables map[string]interface{}
 		variablesStr := values.Get("variables")
-		json.Unmarshal([]byte(variablesStr), variables)
+		json.Unmarshal([]byte(variablesStr), &variables)
 
 		return &RequestOptions{
 			Query:         query,
@@ -129,7 +129,6 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 	}
 	result := graphql.Do(params)
 
-	
 	if h.pretty {
 		w.WriteHeader(http.StatusOK)
 		buff, _ := json.MarshalIndent(result, "", "\t")
@@ -138,7 +137,7 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 	} else {
 		w.WriteHeader(http.StatusOK)
 		buff, _ := json.Marshal(result)
-	
+
 		w.Write(buff)
 	}
 }

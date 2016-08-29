@@ -21,8 +21,10 @@ const (
 type Handler struct {
 	Schema *graphql.Schema
 	
+	cg *ContextGenerator
 	pretty bool
 }
+
 type RequestOptions struct {
 	Query         string                 `json:"query" url:"query" schema:"query"`
 	Variables     map[string]interface{} `json:"variables" url:"variables" schema:"variables"`
@@ -140,6 +142,22 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 		buff, _ := json.Marshal(result)
 	
 		w.Write(buff)
+	}
+}
+
+type ContextGenerator interface {
+	MakeContext(w http.ResponseWriter, r *http.Request) (context.Context, error)
+}
+
+func (h *Handler) SetContextGenerator(cg *ContextGenerator) {
+	h.cg = cg
+}
+
+func (h *Handler) GetContext(w http.ResponseWriter, r *http.Request) (ctx context.Context, err error) {
+	if h.cg != nil {
+		return h.cg.MakeContext(w, r)
+	} else {
+		return context.Background(), nil
 	}
 }
 

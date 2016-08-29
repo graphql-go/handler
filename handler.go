@@ -21,7 +21,7 @@ const (
 type Handler struct {
 	Schema *graphql.Schema
 	
-	cg *ContextGenerator
+	rcg RequestContextGenerator
 	pretty bool
 }
 
@@ -145,17 +145,17 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 	}
 }
 
-type ContextGenerator interface {
+type RequestContextGenerator interface {
 	MakeContext(w http.ResponseWriter, r *http.Request) (context.Context, error)
 }
 
-func (h *Handler) SetContextGenerator(cg *ContextGenerator) {
-	h.cg = cg
+func (h *Handler) SetRequestContextGenerator(rcg RequestContextGenerator) {
+	h.rcg = rcg
 }
 
 func (h *Handler) GetContext(w http.ResponseWriter, r *http.Request) (ctx context.Context, err error) {
-	if h.cg != nil {
-		return h.cg.MakeContext(w, r)
+	if h.rcg != nil {
+		return h.rcg.MakeContext(w, r)
 	} else {
 		return context.Background(), nil
 	}
@@ -163,7 +163,11 @@ func (h *Handler) GetContext(w http.ResponseWriter, r *http.Request) (ctx contex
 
 // ServeHTTP provides an entrypoint into executing graphQL queries.
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.ContextHandler(context.Background(), w, r)
+	if ctx, err := h.GetContext(w, r); err != nil {
+		panic(err)
+	} else {
+		h.ContextHandler(ctx, w, r)
+	}
 }
 
 type Config struct {

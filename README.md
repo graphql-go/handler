@@ -32,6 +32,48 @@ func main() {
 }
 ```
 
+By default, `context.Background()` is used to generate contexts. If you need to provide an alternative method to support environments, like AppEngine, you can provide a RequestContextGenerator.
+
+```go
+package main
+
+import (
+  "net/http"
+
+  "golang.org/x/net/context"
+  "github.com/graphql-go/handler"
+  "google.golang.org/appengine"
+)
+
+type contextGenerator struct {
+
+}
+
+func (cg *contextGenerator) MakeContext(w http.ResponseWriter, r *http.Request) (context.Context, error) {
+    ctx := appengine.NewContext(r)
+
+    return ctx, nil
+}
+
+func main() {
+
+  // define GraphQL schema using relay library helpers
+  schema := graphql.NewSchema(...)
+  
+  h := handler.New(&handler.Config{
+    Schema: schema,
+    Pretty: true,
+  })
+
+  cg := &contextGenerator{}
+  h.SetRequestContextGenerator(cg)
+
+  // serve HTTP
+  http.Handle("/graphql", h)
+  http.ListenAndServe(":8080", nil)
+}
+```
+
 ### Details
 
 The handler will accept requests with

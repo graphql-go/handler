@@ -1,4 +1,4 @@
-package handler_test
+package handler
 
 import (
 	"encoding/json"
@@ -10,11 +10,10 @@ import (
 	"strings"
 	"testing"
 
+	"golang.org/x/net/context"
+
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/testutil"
-	"github.com/graphql-go/handler"
-	"github.com/graphql-go/relay/examples/starwars" // TODO: remove this dependency
-	"golang.org/x/net/context"
 )
 
 func decodeResponse(t *testing.T, recorder *httptest.ResponseRecorder) *graphql.Result {
@@ -33,7 +32,7 @@ func decodeResponse(t *testing.T, recorder *httptest.ResponseRecorder) *graphql.
 	}
 	return &target
 }
-func executeTest(t *testing.T, h *handler.Handler, req *http.Request) (*graphql.Result, *httptest.ResponseRecorder) {
+func executeTest(t *testing.T, h *Handler, req *http.Request) (*graphql.Result, *httptest.ResponseRecorder) {
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
 	result := decodeResponse(t, resp)
@@ -53,7 +52,8 @@ func TestContextPropagated(t *testing.T) {
 			},
 		},
 	})
-	myNameSchema, err := graphql.NewSchema(graphql.SchemaConfig{myNameQuery, nil})
+
+	myNameSchema, err := graphql.NewSchema(graphql.SchemaConfig{Query: myNameQuery})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,18 +66,19 @@ func TestContextPropagated(t *testing.T) {
 	queryString := `query={name}`
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
 
-	h := handler.New(&handler.Config{
-		Schema: &myNameSchema,
-		Pretty: true,
-	})
+	h := New(&Config{Schema: &myNameSchema, Pretty: true})
 
 	ctx := context.WithValue(context.Background(), "name", "context-data")
 	resp := httptest.NewRecorder()
+
 	h.ContextHandler(ctx, resp, req)
+
 	result := decodeResponse(t, resp)
+
 	if resp.Code != http.StatusOK {
 		t.Fatalf("unexpected server response %v", resp.Code)
 	}
+
 	if !reflect.DeepEqual(result, expected) {
 		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
 	}
@@ -92,17 +93,18 @@ func TestHandler_BasicQuery_Pretty(t *testing.T) {
 			},
 		},
 	}
+
 	queryString := `query=query RebelsShipsQuery { rebels { id, name } }`
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
 
-	h := handler.New(&handler.Config{
-		Schema: &starwars.Schema,
-		Pretty: true,
-	})
+	h := New(&Config{Schema: &schema, Pretty: true})
+
 	result, resp := executeTest(t, h, req)
+
 	if resp.Code != http.StatusOK {
 		t.Fatalf("unexpected server response %v", resp.Code)
 	}
+
 	if !reflect.DeepEqual(result, expected) {
 		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
 	}
@@ -117,17 +119,18 @@ func TestHandler_BasicQuery_Ugly(t *testing.T) {
 			},
 		},
 	}
+
 	queryString := `query=query RebelsShipsQuery { rebels { id, name } }`
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
 
-	h := handler.New(&handler.Config{
-		Schema: &starwars.Schema,
-		Pretty: false,
-	})
+	h := New(&Config{Schema: &schema, Pretty: false})
+
 	result, resp := executeTest(t, h, req)
+
 	if resp.Code != http.StatusOK {
 		t.Fatalf("unexpected server response %v", resp.Code)
 	}
+
 	if !reflect.DeepEqual(result, expected) {
 		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
 	}
@@ -148,6 +151,6 @@ func TestHandler_Params_NilParams(t *testing.T) {
 		}
 		t.Fatalf("expected to panic, did not panic")
 	}()
-	_ = handler.New(nil)
 
+	_ = New(nil)
 }

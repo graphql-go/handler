@@ -22,7 +22,7 @@ func main() {
 	schema := graphql.NewSchema(...)
   
 	h := handler.New(&handler.Config{
-		Schema: schema,
+		Schema: &schema,
 		Pretty: true,
 	})
 	

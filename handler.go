@@ -145,7 +145,7 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 
 // ServeHTTP provides an entrypoint into executing graphQL queries.
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.ContextHandler(context.Background(), w, r)
+	h.ContextHandler(contextFromRequest(r), w, r)
 }
 
 type Config struct {

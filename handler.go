@@ -9,7 +9,7 @@ import (
 
 	"github.com/graphql-go/graphql"
 
-	"golang.org/x/net/context"
+	"context"
 )
 
 const (

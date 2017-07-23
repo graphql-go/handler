@@ -13,8 +13,7 @@ import (
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/testutil"
 	"github.com/graphql-go/handler"
-	"github.com/graphql-go/relay/examples/starwars" // TODO: remove this dependency
-	"golang.org/x/net/context"
+	"context"
 )
 
 func decodeResponse(t *testing.T, recorder *httptest.ResponseRecorder) *graphql.Result {
@@ -53,7 +52,9 @@ func TestContextPropagated(t *testing.T) {
 			},
 		},
 	})
-	myNameSchema, err := graphql.NewSchema(graphql.SchemaConfig{myNameQuery, nil})
+	myNameSchema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query: myNameQuery,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,17 +87,16 @@ func TestContextPropagated(t *testing.T) {
 func TestHandler_BasicQuery_Pretty(t *testing.T) {
 	expected := &graphql.Result{
 		Data: map[string]interface{}{
-			"rebels": map[string]interface{}{
-				"id":   "RmFjdGlvbjox",
-				"name": "Alliance to Restore the Republic",
+			"hero": map[string]interface{}{
+				"name": "R2-D2",
 			},
 		},
 	}
-	queryString := `query=query RebelsShipsQuery { rebels { id, name } }`
+	queryString := `query=query HeroNameQuery { hero { name } }`
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
 
 	h := handler.New(&handler.Config{
-		Schema: &starwars.Schema,
+		Schema: &testutil.StarWarsSchema,
 		Pretty: true,
 	})
 	result, resp := executeTest(t, h, req)
@@ -111,17 +111,16 @@ func TestHandler_BasicQuery_Pretty(t *testing.T) {
 func TestHandler_BasicQuery_Ugly(t *testing.T) {
 	expected := &graphql.Result{
 		Data: map[string]interface{}{
-			"rebels": map[string]interface{}{
-				"id":   "RmFjdGlvbjox",
-				"name": "Alliance to Restore the Republic",
+			"hero": map[string]interface{}{
+				"name": "R2-D2",
 			},
 		},
 	}
-	queryString := `query=query RebelsShipsQuery { rebels { id, name } }`
+	queryString := `query=query HeroNameQuery { hero { name } }`
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
 
 	h := handler.New(&handler.Config{
-		Schema: &starwars.Schema,
+		Schema: &testutil.StarWarsSchema,
 		Pretty: false,
 	})
 	result, resp := executeTest(t, h, req)

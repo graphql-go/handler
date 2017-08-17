@@ -20,7 +20,7 @@ const (
 
 type Handler struct {
 	Schema *graphql.Schema
-	
+
 	pretty bool
 }
 type RequestOptions struct {
@@ -129,7 +129,6 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 	}
 	result := graphql.Do(params)
 
-	
 	if h.pretty {
 		w.WriteHeader(http.StatusOK)
 		buff, _ := json.MarshalIndent(result, "", "\t")
@@ -138,14 +137,14 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 	} else {
 		w.WriteHeader(http.StatusOK)
 		buff, _ := json.Marshal(result)
-	
+
 		w.Write(buff)
 	}
 }
 
 // ServeHTTP provides an entrypoint into executing graphQL queries.
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.ContextHandler(context.Background(), w, r)
+	h.ContextHandler(r.Context(), w, r)
 }
 
 type Config struct {

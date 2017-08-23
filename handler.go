@@ -20,8 +20,9 @@ const (
 
 type Handler struct {
 	Schema *graphql.Schema
-	
-	pretty bool
+
+	pretty   bool
+	graphiql bool
 }
 type RequestOptions struct {
 	Query         string                 `json:"query" url:"query" schema:"query"`
@@ -129,7 +130,14 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 	}
 	result := graphql.Do(params)
 
-	
+	if h.graphiql {
+		acceptHeader := r.Header.Get("Accept")
+		if !strings.Contains(acceptHeader, "application/json") && strings.Contains(acceptHeader, "text/html") {
+			renderGraphiQL(w, params)
+			return
+		}
+	}
+
 	if h.pretty {
 		w.WriteHeader(http.StatusOK)
 		buff, _ := json.MarshalIndent(result, "", "\t")
@@ -138,7 +146,7 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 	} else {
 		w.WriteHeader(http.StatusOK)
 		buff, _ := json.Marshal(result)
-	
+
 		w.Write(buff)
 	}
 }
@@ -149,14 +157,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type Config struct {
-	Schema *graphql.Schema
-	Pretty bool
+	Schema   *graphql.Schema
+	Pretty   bool
+	GraphiQL bool
 }
 
 func NewConfig() *Config {
 	return &Config{
-		Schema: nil,
-		Pretty: true,
+		Schema:   nil,
+		Pretty:   true,
+		GraphiQL: true,
 	}
 }
 
@@ -169,7 +179,8 @@ func New(p *Config) *Handler {
 	}
 
 	return &Handler{
-		Schema: p.Schema,
-		pretty: p.Pretty,
+		Schema:   p.Schema,
+		pretty:   p.Pretty,
+		graphiql: p.GraphiQL,
 	}
 }

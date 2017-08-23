@@ -3,7 +3,7 @@
 Golang HTTP.Handler for [graphl-go](https://github.com/graphql-go/graphql)
 
 ### Notes:
-This is based on alpha version of `graphql-go` and `graphql-relay-go`. 
+This is based on alpha version of `graphql-go` and `graphql-relay-go`.
 Be sure to watch both repositories for latest changes.
 
 ### Usage
@@ -20,12 +20,13 @@ func main() {
 
 	// define GraphQL schema using relay library helpers
 	schema := graphql.NewSchema(...)
-  
+
 	h := handler.New(&handler.Config{
 		Schema: &schema,
 		Pretty: true,
+		GraphiQL: true,
 	})
-	
+
 	// serve HTTP
 	http.Handle("/graphql", h)
 	http.ListenAndServe(":8080", nil)

@@ -129,6 +129,9 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 	}
 	result := graphql.Do(params)
 
+	// use proper JSON Header
+	w.Header().Add("Content-Type", "application/json")
+
 	if h.pretty {
 		w.WriteHeader(http.StatusOK)
 		buff, _ := json.MarshalIndent(result, "", "\t")

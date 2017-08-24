@@ -20,7 +20,7 @@ const (
 
 type Handler struct {
 	Schema *graphql.Schema
-	
+
 	pretty bool
 }
 type RequestOptions struct {
@@ -129,7 +129,9 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 	}
 	result := graphql.Do(params)
 
-	
+	// use proper JSON Header
+	w.Header().Add("Content-Type", "application/json")
+
 	if h.pretty {
 		w.WriteHeader(http.StatusOK)
 		buff, _ := json.MarshalIndent(result, "", "\t")
@@ -138,7 +140,7 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 	} else {
 		w.WriteHeader(http.StatusOK)
 		buff, _ := json.Marshal(result)
-	
+
 		w.Write(buff)
 	}
 }

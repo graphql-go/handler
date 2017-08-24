@@ -10,10 +10,10 @@ import (
 	"strings"
 	"testing"
 
+	"context"
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/testutil"
 	"github.com/graphql-go/handler"
-	"context"
 )
 
 func decodeResponse(t *testing.T, recorder *httptest.ResponseRecorder) *graphql.Result {

@@ -38,12 +38,17 @@ func renderGraphiQL(w http.ResponseWriter, params graphql.Params) {
 	}
 
 	// Create result string
-	result, err := json.MarshalIndent(graphql.Do(params), "", "  ")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	var resString string
+	if params.RequestString == "" {
+		resString = ""
+	} else {
+		result, err := json.MarshalIndent(graphql.Do(params), "", "  ")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		resString = string(result)
 	}
-	resString := string(result)
 
 	p := graphiqlPage{
 		GraphiqlVersion: graphiqlVersion,

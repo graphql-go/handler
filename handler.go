@@ -132,7 +132,8 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 
 	if h.graphiql {
 		acceptHeader := r.Header.Get("Accept")
-		if !strings.Contains(acceptHeader, "application/json") && strings.Contains(acceptHeader, "text/html") {
+		_, raw := r.URL.Query()["raw"]
+		if !raw && !strings.Contains(acceptHeader, "application/json") && strings.Contains(acceptHeader, "text/html") {
 			renderGraphiQL(w, params)
 			return
 		}

@@ -14,6 +14,7 @@ func TestRenderGraphiQL(t *testing.T) {
 	cases := map[string]struct {
 		graphiqlEnabled      bool
 		accept               string
+		url                  string
 		expectedStatusCode   int
 		expectedContentType  string
 		expectedBodyContains string
@@ -37,11 +38,23 @@ func TestRenderGraphiQL(t *testing.T) {
 			expectedStatusCode:  http.StatusOK,
 			expectedContentType: "application/json; charset=utf-8",
 		},
+		"doesn't render GraphiQL if Content-Type text/html is not present": {
+			graphiqlEnabled:     true,
+			expectedStatusCode:  http.StatusOK,
+			expectedContentType: "application/json; charset=utf-8",
+		},
+		"doesn't render GraphiQL if 'raw' query is present": {
+			graphiqlEnabled:     true,
+			accept:              "text/html",
+			url:                 "?raw",
+			expectedStatusCode:  http.StatusOK,
+			expectedContentType: "application/json; charset=utf-8",
+		},
 	}
 
 	for tcID, tc := range cases {
 		t.Run(tcID, func(t *testing.T) {
-			req, err := http.NewRequest(http.MethodGet, "", nil)
+			req, err := http.NewRequest(http.MethodGet, tc.url, nil)
 			if err != nil {
 				t.Error(err)
 			}

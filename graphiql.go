@@ -39,6 +39,10 @@ func renderGraphiQL(w http.ResponseWriter, params graphql.Params) {
 
 	// Create result string
 	result, err := json.MarshalIndent(graphql.Do(params), "", "  ")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	resString := string(result)
 
 	p := graphiqlPage{

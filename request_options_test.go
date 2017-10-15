@@ -150,6 +150,27 @@ func TestRequestOptions_POST_ContentTypeApplicationJSON(t *testing.T) {
 		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
 	}
 }
+
+func TestRequestOptions_GET_WithVariablesAsObject(t *testing.T) {
+	query := url.QueryEscape("query RebelsShipsQuery { rebels { name } }")
+	variables := url.QueryEscape(`{ "a": 1, "b": "2" }`)
+	queryString := fmt.Sprintf("query=%s&variables=%s", query, variables)
+	expected := &RequestOptions{
+		Query: "query RebelsShipsQuery { rebels { name } }",
+		Variables: map[string]interface{}{
+			"a": float64(1),
+			"b": "2",
+		},
+	}
+
+	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
+	result := NewRequestOptions(req)
+
+	if !reflect.DeepEqual(result, expected) {
+		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
+	}
+}
+
 func TestRequestOptions_POST_ContentTypeApplicationJSON_WithVariablesAsObject(t *testing.T) {
 	body := `
 	{

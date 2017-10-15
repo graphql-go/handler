@@ -43,7 +43,7 @@ func getFromForm(values url.Values) *RequestOptions {
 		// get variables map
 		var variables map[string]interface{}
 		variablesStr := values.Get("variables")
-		json.Unmarshal([]byte(variablesStr), variables)
+		json.Unmarshal([]byte(variablesStr), &variables)
 
 		return &RequestOptions{
 			Query:         query,

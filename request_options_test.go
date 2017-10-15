@@ -14,7 +14,8 @@ import (
 func TestRequestOptions_GET_BasicQueryString(t *testing.T) {
 	queryString := "query=query RebelsShipsQuery { rebels { name } }"
 	expected := &RequestOptions{
-		Query: "query RebelsShipsQuery { rebels { name } }",
+		Query:     "query RebelsShipsQuery { rebels { name } }",
+		Variables: make(map[string]interface{}),
 	}
 
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
@@ -69,7 +70,8 @@ func TestRequestOptions_GET_ContentTypeApplicationUrlEncoded(t *testing.T) {
 func TestRequestOptions_POST_BasicQueryString_WithNoBody(t *testing.T) {
 	queryString := "query=query RebelsShipsQuery { rebels { name } }"
 	expected := &RequestOptions{
-		Query: "query RebelsShipsQuery { rebels { name } }",
+		Query:     "query RebelsShipsQuery { rebels { name } }",
+		Variables: make(map[string]interface{}),
 	}
 
 	req, _ := http.NewRequest("POST", fmt.Sprintf("/graphql?%v", queryString), nil)
@@ -150,6 +152,27 @@ func TestRequestOptions_POST_ContentTypeApplicationJSON(t *testing.T) {
 		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
 	}
 }
+
+func TestRequestOptions_GET_WithVariablesAsObject(t *testing.T) {
+	variables := url.QueryEscape(`{ "a": 1, "b": "2" }`)
+	query := url.QueryEscape("query RebelsShipsQuery { rebels { name } }")
+	queryString := fmt.Sprintf("query=%s&variables=%s", query, variables)
+	expected := &RequestOptions{
+		Query: "query RebelsShipsQuery { rebels { name } }",
+		Variables: map[string]interface{}{
+			"a": float64(1),
+			"b": "2",
+		},
+	}
+
+	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
+	result := NewRequestOptions(req)
+
+	if !reflect.DeepEqual(result, expected) {
+		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
+	}
+}
+
 func TestRequestOptions_POST_ContentTypeApplicationJSON_WithVariablesAsObject(t *testing.T) {
 	body := `
 	{
@@ -223,7 +246,8 @@ func TestRequestOptions_POST_ContentTypeApplicationUrlEncoded(t *testing.T) {
 	data.Add("query", "query RebelsShipsQuery { rebels { name } }")
 
 	expected := &RequestOptions{
-		Query: "query RebelsShipsQuery { rebels { name } }",
+		Query:     "query RebelsShipsQuery { rebels { name } }",
+		Variables: make(map[string]interface{}),
 	}
 
 	req, _ := http.NewRequest("POST", "/graphql", bytes.NewBufferString(data.Encode()))
@@ -263,7 +287,8 @@ func TestRequestOptions_POST_ContentTypeApplicationUrlEncoded_WithNilBody(t *tes
 func TestRequestOptions_PUT_BasicQueryString(t *testing.T) {
 	queryString := "query=query RebelsShipsQuery { rebels { name } }"
 	expected := &RequestOptions{
-		Query: "query RebelsShipsQuery { rebels { name } }",
+		Query:     "query RebelsShipsQuery { rebels { name } }",
+		Variables: make(map[string]interface{}),
 	}
 
 	req, _ := http.NewRequest("PUT", fmt.Sprintf("/graphql?%v", queryString), nil)
@@ -318,7 +343,8 @@ func TestRequestOptions_PUT_ContentTypeApplicationUrlEncoded(t *testing.T) {
 func TestRequestOptions_DELETE_BasicQueryString(t *testing.T) {
 	queryString := "query=query RebelsShipsQuery { rebels { name } }"
 	expected := &RequestOptions{
-		Query: "query RebelsShipsQuery { rebels { name } }",
+		Query:     "query RebelsShipsQuery { rebels { name } }",
+		Variables: make(map[string]interface{}),
 	}
 
 	req, _ := http.NewRequest("DELETE", fmt.Sprintf("/graphql?%v", queryString), nil)

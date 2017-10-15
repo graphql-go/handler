@@ -67,14 +67,19 @@ func TestContextPropagated(t *testing.T) {
 	queryString := `query={name}`
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
 
+	ctx := context.WithValue(context.Background(), "name", "context-data")
 	h := handler.New(&handler.Config{
-		Schema: &myNameSchema,
+		Params: graphql.Params{
+			Schema:  myNameSchema,
+			Context: ctx,
+		},
 		Pretty: true,
 	})
 
-	ctx := context.WithValue(context.Background(), "name", "context-data")
 	resp := httptest.NewRecorder()
-	h.ContextHandler(ctx, resp, req)
+
+	h.ServeHTTP(resp, req)
+
 	result := decodeResponse(t, resp)
 	if resp.Code != http.StatusOK {
 		t.Fatalf("unexpected server response %v", resp.Code)
@@ -96,7 +101,9 @@ func TestHandler_BasicQuery_Pretty(t *testing.T) {
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
 
 	h := handler.New(&handler.Config{
-		Schema: &testutil.StarWarsSchema,
+		Params: graphql.Params{
+			Schema: testutil.StarWarsSchema,
+		},
 		Pretty: true,
 	})
 	result, resp := executeTest(t, h, req)
@@ -120,7 +127,9 @@ func TestHandler_BasicQuery_Ugly(t *testing.T) {
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
 
 	h := handler.New(&handler.Config{
-		Schema: &testutil.StarWarsSchema,
+		Params: graphql.Params{
+			Schema: testutil.StarWarsSchema,
+		},
 		Pretty: false,
 	})
 	result, resp := executeTest(t, h, req)
@@ -130,25 +139,6 @@ func TestHandler_BasicQuery_Ugly(t *testing.T) {
 	if !reflect.DeepEqual(result, expected) {
 		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
 	}
-}
-
-func TestHandler_Params_NilParams(t *testing.T) {
-	defer func() {
-		if r := recover(); r != nil {
-			if str, ok := r.(string); ok {
-				if str != "undefined GraphQL schema" {
-					t.Fatalf("unexpected error, got %v", r)
-				}
-				// test passed
-				return
-			}
-			t.Fatalf("unexpected error, got %v", r)
-
-		}
-		t.Fatalf("expected to panic, did not panic")
-	}()
-	_ = handler.New(nil)
-
 }
 
 func TestHandler_Params_RootObject(t *testing.T) {
@@ -184,9 +174,11 @@ func TestHandler_Params_RootObject(t *testing.T) {
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
 
 	h := handler.New(&handler.Config{
-		Schema:     &myNameSchema,
-		RootObject: rootObject,
-		Pretty:     true,
+		Params: graphql.Params{
+			Schema:     myNameSchema,
+			RootObject: rootObject,
+		},
+		Pretty: true,
 	})
 
 	result, resp := executeTest(t, h, req)

@@ -19,10 +19,11 @@ const (
 )
 
 type Handler struct {
-	Schema      *graphql.Schema
-	pretty      bool
-	graphiql    bool
-	EndpointURL string
+	Schema                *graphql.Schema
+	pretty                bool
+	graphiql              bool
+	EndpointURL           string
+	SubscriptionsEndpoint string
 }
 type RequestOptions struct {
 	Query         string                 `json:"query" url:"query" schema:"query"`
@@ -161,18 +162,20 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type Config struct {
-	Schema      *graphql.Schema
-	Pretty      bool
-	GraphiQL    bool
-	EndpointURL string
+	Schema                *graphql.Schema
+	Pretty                bool
+	GraphiQL              bool
+	EndpointURL           string
+	SubscriptionsEndpoint string
 }
 
 func NewConfig() *Config {
 	return &Config{
-		Schema:      nil,
-		Pretty:      true,
-		GraphiQL:    true,
-		EndpointURL: "/",
+		Schema:                nil,
+		Pretty:                true,
+		GraphiQL:              true,
+		EndpointURL:           "",
+		SubscriptionsEndpoint: "",
 	}
 }
 
@@ -185,9 +188,10 @@ func New(p *Config) *Handler {
 	}
 
 	return &Handler{
-		Schema:      p.Schema,
-		pretty:      p.Pretty,
-		graphiql:    p.GraphiQL,
-		EndpointURL: p.EndpointURL,
+		Schema:                p.Schema,
+		pretty:                p.Pretty,
+		graphiql:              p.GraphiQL,
+		EndpointURL:           p.EndpointURL,
+		SubscriptionsEndpoint: p.SubscriptionsEndpoint,
 	}
 }

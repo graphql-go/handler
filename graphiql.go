@@ -15,10 +15,11 @@ type graphiqlPage struct {
 	ResultString    string
 	VariablesString string
 	OperationName   string
+	EndpointURL     template.URL
 }
 
 // renderGraphiQL renders the GraphiQL GUI
-func renderGraphiQL(w http.ResponseWriter, params graphql.Params) {
+func renderGraphiQL(w http.ResponseWriter, params graphql.Params, handler Handler) {
 	t := template.New("GraphiQL")
 	t, err := t.Parse(graphiqlTemplate)
 	if err != nil {
@@ -56,6 +57,7 @@ func renderGraphiQL(w http.ResponseWriter, params graphql.Params) {
 		ResultString:    resString,
 		VariablesString: varsString,
 		OperationName:   params.OperationName,
+		EndpointURL:     template.URL(handler.EndpointURL),
 	}
 
 	err = t.ExecuteTemplate(w, "index", p)
@@ -134,7 +136,7 @@ add "&raw" to the end of the URL within a browser.
         otherParams[k] = parameters[k];
       }
     }
-    var fetchURL = locationQuery(otherParams);
+    var fetchURL = locationQuery(otherParams, {{ .EndpointURL }});
 
     // Defines a GraphQL fetcher using the fetch API.
     function graphQLFetcher(graphQLParams) {

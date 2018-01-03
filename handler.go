@@ -19,9 +19,10 @@ const (
 )
 
 type Handler struct {
-	Schema *graphql.Schema
-	pretty   bool
-	graphiql bool
+	Schema      *graphql.Schema
+	pretty      bool
+	graphiql    bool
+	EndpointURL string
 }
 type RequestOptions struct {
 	Query         string                 `json:"query" url:"query" schema:"query"`
@@ -133,7 +134,7 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 		acceptHeader := r.Header.Get("Accept")
 		_, raw := r.URL.Query()["raw"]
 		if !raw && !strings.Contains(acceptHeader, "application/json") && strings.Contains(acceptHeader, "text/html") {
-			renderGraphiQL(w, params)
+			renderGraphiQL(w, params, *h)
 			return
 		}
 	}
@@ -160,16 +161,18 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type Config struct {
-	Schema   *graphql.Schema
-	Pretty   bool
-	GraphiQL bool
+	Schema      *graphql.Schema
+	Pretty      bool
+	GraphiQL    bool
+	EndpointURL string
 }
 
 func NewConfig() *Config {
 	return &Config{
-		Schema:   nil,
-		Pretty:   true,
-		GraphiQL: true,
+		Schema:      nil,
+		Pretty:      true,
+		GraphiQL:    true,
+		EndpointURL: "/",
 	}
 }
 
@@ -182,8 +185,9 @@ func New(p *Config) *Handler {
 	}
 
 	return &Handler{
-		Schema:   p.Schema,
-		pretty:   p.Pretty,
-		graphiql: p.GraphiQL,
+		Schema:      p.Schema,
+		pretty:      p.Pretty,
+		graphiql:    p.GraphiQL,
+		EndpointURL: p.EndpointURL,
 	}
 }

@@ -207,10 +207,10 @@ add "&raw" to the end of the URL within a browser.
       var fetcher = window.GraphiQLSubscriptionsFetcher.graphQLFetcher(subscriptionsClient, graphQLHttpFetcher);
     {{ else }}
       {{ if .UsingWS }}
-        var fetcher = 'graphQLWSFetcher';
+        var fetcher = graphQLWSFetcher;
       {{ end }}
       {{ if .UsingHTTP }}
-        var fetcher = 'graphQLHttpFetcher';
+        var fetcher = graphQLHttpFetcher;
       {{ end }}
     {{ end }}
 

@@ -19,7 +19,6 @@ type graphiqlPage struct {
 	OperationName                string
 	EndpointURL                  template.URL
 	EndpointURLWS                template.URL
-	SubscriptionsEndpoint        template.URL
 	UsingHTTP                    bool
 	UsingWS                      bool
 }
@@ -78,7 +77,6 @@ func renderGraphiQL(w http.ResponseWriter, params graphql.Params, handler Handle
 		OperationName:                params.OperationName,
 		EndpointURL:                  template.URL(handler.EndpointURL),
 		EndpointURLWS:                template.URL(EndpointURLWS),
-		SubscriptionsEndpoint:        template.URL(handler.SubscriptionsEndpoint),
 		UsingHTTP:                    UsingHTTP,
 		UsingWS:                      UsingWS,
 	}

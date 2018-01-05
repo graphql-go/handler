@@ -18,7 +18,7 @@ type graphiqlPage struct {
 	VariablesString              string
 	OperationName                string
 	Endpoint                     template.URL
-	EndpointURLWS                template.URL
+	SubscriptionEndpoint         template.URL
 	UsingHTTP                    bool
 	UsingWS                      bool
 }
@@ -59,12 +59,12 @@ func renderGraphiQL(w http.ResponseWriter, params graphql.Params, handler Handle
 	isEndpointUsingWS := strings.HasPrefix(handler.Endpoint, "ws://")
 	UsingHTTP := !isEndpointUsingWS
 	UsingWS := isEndpointUsingWS || handler.SubscriptionsEndpoint != ""
-	EndpointURLWS := ""
+	SubscriptionEndpoint := ""
 	if UsingWS {
 		if isEndpointUsingWS {
-			EndpointURLWS = handler.Endpoint
+			SubscriptionEndpoint = handler.Endpoint
 		} else {
-			EndpointURLWS = handler.SubscriptionsEndpoint
+			SubscriptionEndpoint = handler.SubscriptionsEndpoint
 		}
 	}
 
@@ -76,7 +76,7 @@ func renderGraphiQL(w http.ResponseWriter, params graphql.Params, handler Handle
 		VariablesString:              varsString,
 		OperationName:                params.OperationName,
 		Endpoint:                     template.URL(handler.Endpoint),
-		EndpointURLWS:                template.URL(EndpointURLWS),
+		SubscriptionEndpoint:         template.URL(SubscriptionEndpoint),
 		UsingHTTP:                    UsingHTTP,
 		UsingWS:                      UsingWS,
 	}
@@ -172,7 +172,7 @@ add "&raw" to the end of the URL within a browser.
     }
 
     {{ if .UsingWS }}
-      var subscriptionsClient = new window.SubscriptionsTransportWs.SubscriptionClient({{ .EndpointURLWS }}, {
+      var subscriptionsClient = new window.SubscriptionsTransportWs.SubscriptionClient({{ .SubscriptionEndpoint }}, {
         reconnect: true
       });
       var graphQLWSFetcher = subscriptionsClient.request.bind(subscriptionsClient);

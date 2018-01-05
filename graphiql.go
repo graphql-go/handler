@@ -17,7 +17,7 @@ type graphiqlPage struct {
 	ResultString                 string
 	VariablesString              string
 	OperationName                string
-	EndpointURL                  template.URL
+	Endpoint                     template.URL
 	EndpointURLWS                template.URL
 	UsingHTTP                    bool
 	UsingWS                      bool
@@ -56,13 +56,13 @@ func renderGraphiQL(w http.ResponseWriter, params graphql.Params, handler Handle
 		resString = string(result)
 	}
 
-	endpointWS := strings.HasPrefix(handler.EndpointURL, "ws://")
-	UsingHTTP := !endpointWS
-	UsingWS := endpointWS || handler.SubscriptionsEndpoint != ""
+	isEndpointUsingWS := strings.HasPrefix(handler.Endpoint, "ws://")
+	UsingHTTP := !isEndpointUsingWS
+	UsingWS := isEndpointUsingWS || handler.SubscriptionsEndpoint != ""
 	EndpointURLWS := ""
 	if UsingWS {
-		if endpointWS {
-			EndpointURLWS = handler.EndpointURL
+		if isEndpointUsingWS {
+			EndpointURLWS = handler.Endpoint
 		} else {
 			EndpointURLWS = handler.SubscriptionsEndpoint
 		}
@@ -75,7 +75,7 @@ func renderGraphiQL(w http.ResponseWriter, params graphql.Params, handler Handle
 		ResultString:                 resString,
 		VariablesString:              varsString,
 		OperationName:                params.OperationName,
-		EndpointURL:                  template.URL(handler.EndpointURL),
+		Endpoint:                     template.URL(handler.Endpoint),
 		EndpointURLWS:                template.URL(EndpointURLWS),
 		UsingHTTP:                    UsingHTTP,
 		UsingWS:                      UsingWS,
@@ -179,7 +179,7 @@ add "&raw" to the end of the URL within a browser.
     {{ end }}
 
     {{ if .UsingHTTP }}
-      var fetchURL = locationQuery(otherParams, {{ .EndpointURL }});
+      var fetchURL = locationQuery(otherParams, {{ .Endpoint }});
 
       // Defines a GraphQL fetcher using the fetch API.
       function graphQLHttpFetcher(graphQLParams) {

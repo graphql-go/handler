@@ -22,7 +22,7 @@ type Handler struct {
 	Schema                *graphql.Schema
 	pretty                bool
 	graphiql              bool
-	EndpointURL           string
+	Endpoint              string
 	SubscriptionsEndpoint string
 }
 type RequestOptions struct {
@@ -165,7 +165,7 @@ type Config struct {
 	Schema                *graphql.Schema
 	Pretty                bool
 	GraphiQL              bool
-	EndpointURL           string
+	Endpoint              string
 	SubscriptionsEndpoint string
 }
 
@@ -174,7 +174,7 @@ func NewConfig() *Config {
 		Schema:                nil,
 		Pretty:                true,
 		GraphiQL:              true,
-		EndpointURL:           "",
+		Endpoint:              "",
 		SubscriptionsEndpoint: "",
 	}
 }
@@ -191,7 +191,7 @@ func New(p *Config) *Handler {
 		Schema:                p.Schema,
 		pretty:                p.Pretty,
 		graphiql:              p.GraphiQL,
-		EndpointURL:           p.EndpointURL,
+		Endpoint:              p.Endpoint,
 		SubscriptionsEndpoint: p.SubscriptionsEndpoint,
 	}
 }

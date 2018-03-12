@@ -8,13 +8,13 @@ import (
 	"github.com/graphql-go/graphql"
 )
 
-// page is the page data structure of the rendered GraphiQL page
-type graphiqlPage struct {
+// graphiqlData is the page data structure of the rendered GraphiQL page
+type graphiqlData struct {
 	GraphiqlVersion string
 	QueryString     string
-	ResultString    string
 	VariablesString string
 	OperationName   string
+	ResultString    string
 }
 
 // renderGraphiQL renders the GraphiQL GUI
@@ -50,23 +50,23 @@ func renderGraphiQL(w http.ResponseWriter, params graphql.Params) {
 		resString = string(result)
 	}
 
-	p := graphiqlPage{
+	d := graphiqlData{
 		GraphiqlVersion: graphiqlVersion,
 		QueryString:     params.RequestString,
 		ResultString:    resString,
 		VariablesString: varsString,
 		OperationName:   params.OperationName,
 	}
-
-	err = t.ExecuteTemplate(w, "index", p)
+	err = t.ExecuteTemplate(w, "index", d)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+
 	return
 }
 
 // graphiqlVersion is the current version of GraphiQL
-const graphiqlVersion = "0.11.10"
+const graphiqlVersion = "0.11.11"
 
 // tmpl is the page template to render GraphiQL
 const graphiqlTemplate = `
@@ -85,21 +85,27 @@ add "&raw" to the end of the URL within a browser.
   <meta charset="utf-8" />
   <title>GraphiQL</title>
   <meta name="robots" content="noindex" />
+  <meta name="referrer" content="origin">
   <style>
-    html, body {
+    body {
       height: 100%;
       margin: 0;
       overflow: hidden;
       width: 100%;
     }
+    #graphiql {
+      height: 100vh;
+    }
   </style>
   <link href="//cdn.jsdelivr.net/npm/graphiql@{{ .GraphiqlVersion }}/graphiql.css" rel="stylesheet" />
+  <script src="//cdn.jsdelivr.net/es6-promise/4.0.5/es6-promise.auto.min.js"></script>
   <script src="//cdn.jsdelivr.net/fetch/0.9.0/fetch.min.js"></script>
   <script src="//cdn.jsdelivr.net/react/15.4.2/react.min.js"></script>
   <script src="//cdn.jsdelivr.net/react/15.4.2/react-dom.min.js"></script>
   <script src="//cdn.jsdelivr.net/npm/graphiql@{{ .GraphiqlVersion }}/graphiql.min.js"></script>
 </head>
 <body>
+  <div id="graphiql">Loading...</div>
   <script>
     // Collect the URL parameters
     var parameters = {};
@@ -190,7 +196,7 @@ add "&raw" to the end of the URL within a browser.
         variables: {{ .VariablesString }},
         operationName: {{ .OperationName }},
       }),
-      document.body
+      document.getElementById('graphiql')
     );
   </script>
 </body>

@@ -19,7 +19,7 @@ import (
 func main() {
 
 	// define GraphQL schema using relay library helpers
-	schema := graphql.NewSchema(...)
+	schema, _ := graphql.NewSchema(...)
 
 	h := handler.New(&handler.Config{
 		Schema: &schema,

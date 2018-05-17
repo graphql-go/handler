@@ -1,4 +1,4 @@
-package handler_test
+package handler
 
 import (
 	"encoding/json"
@@ -13,7 +13,6 @@ import (
 	"context"
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/testutil"
-	"github.com/graphql-go/handler"
 )
 
 func decodeResponse(t *testing.T, recorder *httptest.ResponseRecorder) *graphql.Result {
@@ -32,7 +31,8 @@ func decodeResponse(t *testing.T, recorder *httptest.ResponseRecorder) *graphql.
 	}
 	return &target
 }
-func executeTest(t *testing.T, h *handler.Handler, req *http.Request) (*graphql.Result, *httptest.ResponseRecorder) {
+
+func executeTest(t *testing.T, h *Handler, req *http.Request) (*graphql.Result, *httptest.ResponseRecorder) {
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
 	result := decodeResponse(t, resp)
@@ -67,7 +67,7 @@ func TestContextPropagated(t *testing.T) {
 	queryString := `query={name}`
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
 
-	h := handler.New(&handler.Config{
+	h := New(&Config{
 		Schema: &myNameSchema,
 		Pretty: true,
 	})
@@ -95,7 +95,7 @@ func TestHandler_BasicQuery_Pretty(t *testing.T) {
 	queryString := `query=query HeroNameQuery { hero { name } }`
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
 
-	h := handler.New(&handler.Config{
+	h := New(&Config{
 		Schema: &testutil.StarWarsSchema,
 		Pretty: true,
 	})
@@ -119,7 +119,7 @@ func TestHandler_BasicQuery_Ugly(t *testing.T) {
 	queryString := `query=query HeroNameQuery { hero { name } }`
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
 
-	h := handler.New(&handler.Config{
+	h := New(&Config{
 		Schema: &testutil.StarWarsSchema,
 		Pretty: false,
 	})
@@ -147,6 +147,6 @@ func TestHandler_Params_NilParams(t *testing.T) {
 		}
 		t.Fatalf("expected to panic, did not panic")
 	}()
-	_ = handler.New(nil)
+	_ = New(nil)
 
 }

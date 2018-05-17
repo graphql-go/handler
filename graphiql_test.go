@@ -1,4 +1,4 @@
-package handler_test
+package handler
 
 import (
 	"net/http"
@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/graphql-go/graphql/testutil"
-	"github.com/graphql-go/handler"
 )
 
 func TestRenderGraphiQL(t *testing.T) {
@@ -61,7 +60,7 @@ func TestRenderGraphiQL(t *testing.T) {
 
 			req.Header.Set("Accept", tc.accept)
 
-			h := handler.New(&handler.Config{
+			h := New(&Config{
 				Schema:   &testutil.StarWarsSchema,
 				GraphiQL: tc.graphiqlEnabled,
 			})

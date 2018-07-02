@@ -33,6 +33,16 @@ func main() {
 }
 ```
 
+### Using Playground
+```go
+h := handler.New(&handler.Config{
+	Schema: &schema,
+	Pretty: true,
+	GraphiQL: false,
+	Playground: true,
+})
+```
+
 ### Details
 
 The handler will accept requests with

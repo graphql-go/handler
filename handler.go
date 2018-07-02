@@ -19,9 +19,10 @@ const (
 )
 
 type Handler struct {
-	Schema *graphql.Schema
-	pretty   bool
-	graphiql bool
+	Schema     *graphql.Schema
+	pretty     bool
+	graphiql   bool
+	playground bool
 }
 type RequestOptions struct {
 	Query         string                 `json:"query" url:"query" schema:"query"`
@@ -138,6 +139,15 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 		}
 	}
 
+	if h.playground {
+		acceptHeader := r.Header.Get("Accept")
+		_, raw := r.URL.Query()["raw"]
+		if !raw && !strings.Contains(acceptHeader, "application/json") && strings.Contains(acceptHeader, "text/html") {
+			renderPlayground(w, r)
+			return
+		}
+	}
+
 	// use proper JSON Header
 	w.Header().Add("Content-Type", "application/json; charset=utf-8")
 
@@ -160,16 +170,18 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type Config struct {
-	Schema   *graphql.Schema
-	Pretty   bool
-	GraphiQL bool
+	Schema     *graphql.Schema
+	Pretty     bool
+	GraphiQL   bool
+	Playground bool
 }
 
 func NewConfig() *Config {
 	return &Config{
-		Schema:   nil,
-		Pretty:   true,
-		GraphiQL: true,
+		Schema:     nil,
+		Pretty:     true,
+		GraphiQL:   true,
+		Playground: false,
 	}
 }
 
@@ -182,8 +194,9 @@ func New(p *Config) *Handler {
 	}
 
 	return &Handler{
-		Schema:   p.Schema,
-		pretty:   p.Pretty,
-		graphiql: p.GraphiQL,
+		Schema:     p.Schema,
+		pretty:     p.Pretty,
+		graphiql:   p.GraphiQL,
+		playground: p.Playground,
 	}
 }

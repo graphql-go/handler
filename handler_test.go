@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"context"
+
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/testutil"
 	"github.com/graphql-go/handler"
@@ -149,4 +150,49 @@ func TestHandler_Params_NilParams(t *testing.T) {
 	}()
 	_ = handler.New(nil)
 
+}
+
+func TestHandler_BasicQuery_WithRootObjFn(t *testing.T) {
+	myNameQuery := graphql.NewObject(graphql.ObjectConfig{
+		Name: "Query",
+		Fields: graphql.Fields{
+			"name": &graphql.Field{
+				Name: "name",
+				Type: graphql.String,
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					rv := p.Info.RootValue.(map[string]interface{})
+					return rv["rootValue"], nil
+				},
+			},
+		},
+	})
+	myNameSchema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query: myNameQuery,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected := &graphql.Result{
+		Data: map[string]interface{}{
+			"name": "foo",
+		},
+	}
+	queryString := `query={name}`
+	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
+
+	h := handler.New(&handler.Config{
+		Schema: &myNameSchema,
+		Pretty: true,
+		RootObjectFn: func(ctx context.Context, r *http.Request) map[string]interface{} {
+			return map[string]interface{}{"rootValue": "foo"}
+		},
+	})
+	result, resp := executeTest(t, h, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("unexpected server response %v", resp.Code)
+	}
+	if !reflect.DeepEqual(result, expected) {
+		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
+	}
 }

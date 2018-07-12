@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/testutil"
 	"github.com/graphql-go/handler"
 )
@@ -62,7 +63,9 @@ func TestRenderGraphiQL(t *testing.T) {
 			req.Header.Set("Accept", tc.accept)
 
 			h := handler.New(&handler.Config{
-				Schema:   &testutil.StarWarsSchema,
+				Params: graphql.Params{
+					Schema: testutil.StarWarsSchema,
+				},
 				GraphiQL: tc.graphiqlEnabled,
 			})
 

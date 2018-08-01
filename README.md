@@ -38,7 +38,7 @@ h := handler.New(&handler.Config{
 
 ### Using Multipart Form Uploads
 
-This handler supports th
+This handler supports the
 [GraphQL multipart request specification](https://github.com/jaydenseric/graphql-multipart-request-spec).
 All file uploads will be made available as the following Scalar that you can add to your GraphQL schemas
 

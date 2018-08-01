@@ -1,9 +1,12 @@
 package handler_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -33,11 +36,49 @@ func decodeResponse(t *testing.T, recorder *httptest.ResponseRecorder) *graphql.
 	}
 	return &target
 }
+
 func executeTest(t *testing.T, h *handler.Handler, req *http.Request) (*graphql.Result, *httptest.ResponseRecorder) {
 	resp := httptest.NewRecorder()
 	h.ServeHTTP(resp, req)
 	result := decodeResponse(t, resp)
 	return result, resp
+}
+
+func uploadTest(t *testing.T, mapData string) *http.Request {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	queryString := `{
+        "query":"query HeroNameQuery { hero { name } }",
+        "variables":{"file":[null,null]}
+    }`
+
+	writer.WriteField("operations", queryString)
+	if mapData != "" {
+		writer.WriteField("map", mapData)
+
+		part1, _ := writer.CreateFormFile("0", "test1.txt")
+		if _, err := io.Copy(part1, strings.NewReader("How now brown cow")); err != nil {
+			t.Fatalf("unexpected copy writer fail %v", err)
+		}
+		part2, _ := writer.CreateFormFile("1", "test2.txt")
+		if _, err := io.Copy(part2, strings.NewReader("How now gold fish")); err != nil {
+			t.Fatalf("unexpected copy writer fail %v", err)
+		}
+	}
+
+	err := writer.Close()
+	if err != nil {
+		t.Fatalf("unexpected writer fail %v", err)
+	}
+
+	req, err := http.NewRequest("POST", "/graphql", body)
+	if err != nil {
+		t.Fatalf("unexpected NewRequest fail %v", err)
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	return req
 }
 
 func TestContextPropagated(t *testing.T) {
@@ -194,5 +235,213 @@ func TestHandler_BasicQuery_WithRootObjFn(t *testing.T) {
 	}
 	if !reflect.DeepEqual(result, expected) {
 		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
+	}
+}
+
+func TestHandler_Post(t *testing.T) {
+	expected := &graphql.Result{
+		Data: map[string]interface{}{
+			"hero": map[string]interface{}{
+				"name": "R2-D2",
+			},
+		},
+	}
+	queryString := `{"query":"query HeroNameQuery { hero { name } }"}`
+
+	req, _ := http.NewRequest("POST", "/graphql", strings.NewReader(queryString))
+	req.Header.Set("Content-Type", "application/json")
+
+	h := handler.New(&handler.Config{
+		Schema: &testutil.StarWarsSchema,
+	})
+	result, resp := executeTest(t, h, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("unexpected server response %v", resp.Code)
+	}
+	if !reflect.DeepEqual(result, expected) {
+		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
+	}
+}
+
+func TestHandler_Multipart_Basic(t *testing.T) {
+	expected := &graphql.Result{
+		Data: map[string]interface{}{
+			"hero": map[string]interface{}{
+				"name": "R2-D2",
+			},
+		},
+	}
+
+	req := uploadTest(t, "")
+
+	h := handler.New(&handler.Config{
+		Schema: &testutil.StarWarsSchema,
+	})
+	result, resp := executeTest(t, h, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("unexpected server response %v", resp.Code)
+	}
+	if !reflect.DeepEqual(result, expected) {
+		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
+	}
+}
+
+func TestHandler_Multipart_Basic_ErrNoOperation(t *testing.T) {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	err := writer.Close()
+	if err != nil {
+		t.Fatalf("unexpected writer fail %v", err)
+	}
+
+	req, err := http.NewRequest("POST", "/graphql", body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	h := handler.New(&handler.Config{
+		Schema: &testutil.StarWarsSchema,
+	})
+	result, resp := executeTest(t, h, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("unexpected server response %v", resp.Code)
+	}
+	if len(result.Errors) != 1 || result.Errors[0].Message != "Must provide an operation." {
+		t.Fatalf("unexpected response")
+	}
+}
+
+func TestHandler_Multipart_Basic_ErrBadMap(t *testing.T) {
+	req := uploadTest(t, `{`)
+
+	h := handler.New(&handler.Config{
+		Schema: &testutil.StarWarsSchema,
+	})
+	result, resp := executeTest(t, h, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("unexpected server response %v", resp.Code)
+	}
+	if len(result.Errors) != 1 || result.Errors[0].Message != "Must provide an operation." {
+		t.Fatalf("unexpected response")
+	}
+}
+
+func TestHandler_Multipart_Basic_ErrBadMapRoot(t *testing.T) {
+	req := uploadTest(t, `{"0":["xxx.file"]}`)
+
+	h := handler.New(&handler.Config{
+		Schema: &testutil.StarWarsSchema,
+	})
+	result, resp := executeTest(t, h, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("unexpected server response %v", resp.Code)
+	}
+	if len(result.Errors) != 1 || result.Errors[0].Message != "Must provide an operation." {
+		t.Fatalf("unexpected response %+v", result)
+	}
+}
+
+func TestHandler_Multipart_Basic_Upload(t *testing.T) {
+	expected := &graphql.Result{
+		Data: map[string]interface{}{
+			"hero": map[string]interface{}{
+				"name": "R2-D2",
+			},
+		},
+	}
+
+	req := uploadTest(t, `{"0":["variables.file"]}`)
+
+	h := handler.New(&handler.Config{
+		Schema: &testutil.StarWarsSchema,
+	})
+	result, resp := executeTest(t, h, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("unexpected server response %v", resp.Code)
+	}
+	if !reflect.DeepEqual(result, expected) {
+		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
+	}
+}
+
+func TestHandler_Multipart_Basic_UploadSlice(t *testing.T) {
+	expected := &graphql.Result{
+		Data: map[string]interface{}{
+			"hero": map[string]interface{}{
+				"name": "R2-D2",
+			},
+		},
+	}
+
+	req := uploadTest(t, `{"0":["variables.file.0"],"1":["variables.file.1"]}`)
+
+	h := handler.New(&handler.Config{
+		Schema: &testutil.StarWarsSchema,
+	})
+	result, resp := executeTest(t, h, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("unexpected server response %v", resp.Code)
+	}
+	if !reflect.DeepEqual(result, expected) {
+		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
+	}
+}
+
+func TestHandler_Multipart_Basic_BadSlice(t *testing.T) {
+	req := uploadTest(t, `{"0":["variables.file.x"]}`)
+
+	h := handler.New(&handler.Config{
+		Schema: &testutil.StarWarsSchema,
+	})
+	result, resp := executeTest(t, h, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("unexpected server response %v", resp.Code)
+	}
+	if len(result.Errors) != 1 || result.Errors[0].Message != "Must provide an operation." {
+		t.Fatalf("unexpected response %+v", result)
+	}
+}
+
+func TestHandler_Multipart_Basic_BadSliceLast(t *testing.T) {
+	req := uploadTest(t, `{"0":["variables.file.0.test"]}`)
+
+	h := handler.New(&handler.Config{
+		Schema: &testutil.StarWarsSchema,
+	})
+	result, resp := executeTest(t, h, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("unexpected server response %v", resp.Code)
+	}
+	if len(result.Errors) != 1 || result.Errors[0].Message != "Must provide an operation." {
+		t.Fatalf("unexpected response %+v", result)
+	}
+}
+
+func TestHandler_Multipart_Basic_BadSliceMiddle(t *testing.T) {
+	req := uploadTest(t, `{"0":["variables.file.x.test"]}`)
+
+	h := handler.New(&handler.Config{
+		Schema: &testutil.StarWarsSchema,
+	})
+	result, resp := executeTest(t, h, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("unexpected server response %v", resp.Code)
+	}
+	if len(result.Errors) != 1 || result.Errors[0].Message != "Must provide an operation." {
+		t.Fatalf("unexpected response %+v", result)
+	}
+}
+
+func TestHandler_Multipart_Basic_BadMapPath(t *testing.T) {
+	req := uploadTest(t, `{"0":["variables.file.x.y.z.z.y"]}`)
+
+	h := handler.New(&handler.Config{
+		Schema: &testutil.StarWarsSchema,
+	})
+	result, resp := executeTest(t, h, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("unexpected server response %v", resp.Code)
+	}
+	if len(result.Errors) != 1 || result.Errors[0].Message != "Must provide an operation." {
+		t.Fatalf("unexpected response %+v", result)
 	}
 }

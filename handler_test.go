@@ -432,7 +432,7 @@ func TestHandler_Multipart_Basic_BadSliceMiddle(t *testing.T) {
 }
 
 func TestHandler_Multipart_Basic_BadMapPath(t *testing.T) {
-	req := uploadTest(t, `{"0":["variables.file.x.y.z.z.y"]}`)
+	req := uploadTest(t, `{"0":["variables.x.y.z.z.y"]}`)
 
 	h := handler.New(&handler.Config{
 		Schema: &testutil.StarWarsSchema,

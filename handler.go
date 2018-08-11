@@ -10,6 +10,7 @@ import (
 	"github.com/graphql-go/graphql"
 
 	"context"
+	"github.com/graphql-go/graphql/gqlerrors"
 )
 
 const (
@@ -19,11 +20,12 @@ const (
 )
 
 type Handler struct {
-	Schema       *graphql.Schema
-	pretty       bool
-	graphiql     bool
-	playground   bool
-	rootObjectFn RootObjectFn
+	Schema               *graphql.Schema
+	pretty               bool
+	graphiql             bool
+	playground           bool
+	rootObjectFn         RootObjectFn
+	customErrorFormatter func(err error) gqlerrors.FormattedError
 }
 type RequestOptions struct {
 	Query         string                 `json:"query" url:"query" schema:"query"`
@@ -123,11 +125,12 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 
 	// execute graphql query
 	params := graphql.Params{
-		Schema:         *h.Schema,
-		RequestString:  opts.Query,
-		VariableValues: opts.Variables,
-		OperationName:  opts.OperationName,
-		Context:        ctx,
+		Schema:              *h.Schema,
+		RequestString:       opts.Query,
+		VariableValues:      opts.Variables,
+		OperationName:       opts.OperationName,
+		Context:             ctx,
+		CustomErrorFomatter: h.customErrorFormatter,
 	}
 	if h.rootObjectFn != nil {
 		params.RootObject = h.rootObjectFn(ctx, r)
@@ -177,11 +180,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type RootObjectFn func(ctx context.Context, r *http.Request) map[string]interface{}
 
 type Config struct {
-	Schema       *graphql.Schema
-	Pretty       bool
-	GraphiQL     bool
-	Playground   bool
-	RootObjectFn RootObjectFn
+	Schema               *graphql.Schema
+	Pretty               bool
+	GraphiQL             bool
+	Playground           bool
+	RootObjectFn         RootObjectFn
+	CustomErrorFormatter func(err error) gqlerrors.FormattedError
 }
 
 func NewConfig() *Config {
@@ -197,15 +201,17 @@ func New(p *Config) *Handler {
 	if p == nil {
 		p = NewConfig()
 	}
+
 	if p.Schema == nil {
 		panic("undefined GraphQL schema")
 	}
 
 	return &Handler{
-		Schema:       p.Schema,
-		pretty:       p.Pretty,
-		graphiql:     p.GraphiQL,
-		playground:   p.Playground,
-		rootObjectFn: p.RootObjectFn,
+		Schema:               p.Schema,
+		pretty:               p.Pretty,
+		graphiql:             p.GraphiQL,
+		playground:           p.Playground,
+		rootObjectFn:         p.RootObjectFn,
+		customErrorFormatter: p.CustomErrorFormatter,
 	}
 }

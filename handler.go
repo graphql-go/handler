@@ -10,6 +10,7 @@ import (
 	"github.com/graphql-go/graphql"
 
 	"context"
+	"github.com/graphql-go/graphql/gqlerrors"
 )
 
 const (
@@ -27,6 +28,7 @@ type Handler struct {
 	playground       bool
 	rootObjectFn     RootObjectFn
 	resultCallbackFn ResultCallbackFn
+	customErrorFormatter func(err error) gqlerrors.FormattedError
 }
 type RequestOptions struct {
 	Query         string                 `json:"query" url:"query" schema:"query"`
@@ -126,11 +128,12 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 
 	// execute graphql query
 	params := graphql.Params{
-		Schema:         *h.Schema,
-		RequestString:  opts.Query,
-		VariableValues: opts.Variables,
-		OperationName:  opts.OperationName,
-		Context:        ctx,
+		Schema:              *h.Schema,
+		RequestString:       opts.Query,
+		VariableValues:      opts.Variables,
+		OperationName:       opts.OperationName,
+		Context:             ctx,
+		CustomErrorFomatter: h.customErrorFormatter,
 	}
 	if h.rootObjectFn != nil {
 		params.RootObject = h.rootObjectFn(ctx, r)
@@ -191,6 +194,7 @@ type Config struct {
 	Playground       bool
 	RootObjectFn     RootObjectFn
 	ResultCallbackFn ResultCallbackFn
+	CustomErrorFormatter func(err error) gqlerrors.FormattedError
 }
 
 func NewConfig() *Config {
@@ -206,6 +210,7 @@ func New(p *Config) *Handler {
 	if p == nil {
 		p = NewConfig()
 	}
+
 	if p.Schema == nil {
 		panic("undefined GraphQL schema")
 	}
@@ -217,5 +222,6 @@ func New(p *Config) *Handler {
 		playground:       p.Playground,
 		rootObjectFn:     p.RootObjectFn,
 		resultCallbackFn: p.ResultCallbackFn,
+		customErrorFormatter: p.CustomErrorFormatter,
 	}
 }

@@ -93,12 +93,23 @@ func TestHandler_BasicQuery_Pretty(t *testing.T) {
 			},
 		},
 	}
-	queryString := `query=query HeroNameQuery { hero { name } }`
+	queryString := `query=query HeroNameQuery { hero { name } }&operationName=HeroNameQuery`
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
 
+	callbackCalled := false
 	h := handler.New(&handler.Config{
 		Schema: &testutil.StarWarsSchema,
 		Pretty: true,
+		ResultCallbackFn: func(ctx context.Context, params *graphql.Params, result *graphql.Result, responseBody []byte) {
+			callbackCalled = true
+			if params.OperationName != "HeroNameQuery" {
+				t.Fatalf("OperationName passed to callback was not HeroNameQuery: %v", params.OperationName)
+			}
+
+			if result.HasErrors() {
+				t.Fatalf("unexpected graphql result errors")
+			}
+		},
 	})
 	result, resp := executeTest(t, h, req)
 	if resp.Code != http.StatusOK {
@@ -106,6 +117,9 @@ func TestHandler_BasicQuery_Pretty(t *testing.T) {
 	}
 	if !reflect.DeepEqual(result, expected) {
 		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
+	}
+	if !callbackCalled {
+		t.Fatalf("ResultCallbackFn was not called when it should have been")
 	}
 }
 

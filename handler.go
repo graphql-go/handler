@@ -130,12 +130,19 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 		VariableValues:      opts.Variables,
 		OperationName:       opts.OperationName,
 		Context:             ctx,
-		CustomErrorFomatter: h.customErrorFormatter,
 	}
 	if h.rootObjectFn != nil {
 		params.RootObject = h.rootObjectFn(ctx, r)
 	}
 	result := graphql.Do(params)
+
+	if customFormatter := h.customErrorFormatter; customFormatter != nil {
+		formatted := make([]gqlerrors.FormattedError, len(result.Errors))
+		for i, err := range result.Errors {
+			formatted[i] = customFormatter(err.OriginalError())
+		}
+		result.Errors = formatted
+	}
 
 	if h.graphiql {
 		acceptHeader := r.Header.Get("Accept")

@@ -154,18 +154,14 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 
 	// use proper JSON Header
 	w.Header().Add("Content-Type", "application/json; charset=utf-8")
-
+	w.WriteHeader(http.StatusOK)
+	
+	enc := json.NewEncoder(w)
 	if h.pretty {
-		w.WriteHeader(http.StatusOK)
-		buff, _ := json.MarshalIndent(result, "", "\t")
-
-		w.Write(buff)
-	} else {
-		w.WriteHeader(http.StatusOK)
-		buff, _ := json.Marshal(result)
-
-		w.Write(buff)
+		enc.SetIndent("", "\t")
 	}
+	// Not much you can do with this error.
+	_ = enc.Encode(result)
 }
 
 // ServeHTTP provides an entrypoint into executing graphQL queries.

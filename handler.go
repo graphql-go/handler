@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/graphql-go/graphql"
+	"github.com/graphql-go/graphql/gqlerrors"
 
 	"context"
 )
@@ -19,11 +20,12 @@ const (
 )
 
 type Handler struct {
-	Schema       *graphql.Schema
-	pretty       bool
-	graphiql     bool
-	playground   bool
-	rootObjectFn RootObjectFn
+	Schema           *graphql.Schema
+	pretty           bool
+	graphiql         bool
+	playground       bool
+	rootObjectFn     RootObjectFn
+	handlerErrorResp HandlerErrorResp
 }
 type RequestOptions struct {
 	Query         string                 `json:"query" url:"query" schema:"query"`
@@ -155,16 +157,31 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 	// use proper JSON Header
 	w.Header().Add("Content-Type", "application/json; charset=utf-8")
 
+	// custom handler result's errors
+	resp := h.handlerResp(result)
+
 	if h.pretty {
 		w.WriteHeader(http.StatusOK)
-		buff, _ := json.MarshalIndent(result, "", "\t")
+		buff, _ := json.MarshalIndent(resp, "", "\t")
 
 		w.Write(buff)
 	} else {
 		w.WriteHeader(http.StatusOK)
-		buff, _ := json.Marshal(result)
+		buff, _ := json.Marshal(resp)
 
 		w.Write(buff)
+	}
+}
+
+// handle error response
+func (h *Handler) handlerResp(result *graphql.Result) interface{} {
+	var respErr interface{}
+	if h.handlerErrorResp != nil {
+		respErr = h.handlerErrorResp(result.Errors)
+	}
+	return map[string]interface{}{
+		"data":   result.Data,
+		"errors": respErr,
 	}
 }
 
@@ -176,12 +193,22 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // RootObjectFn allows a user to generate a RootObject per request
 type RootObjectFn func(ctx context.Context, r *http.Request) map[string]interface{}
 
+// HandlerErrorResp allow a user to custom error format, such as
+/*
+{
+	"code":	40011,
+	"message": "invalid user"
+}
+*/
+type HandlerErrorResp func([]gqlerrors.FormattedError) interface{}
+
 type Config struct {
-	Schema       *graphql.Schema
-	Pretty       bool
-	GraphiQL     bool
-	Playground   bool
-	RootObjectFn RootObjectFn
+	Schema           *graphql.Schema
+	Pretty           bool
+	GraphiQL         bool
+	Playground       bool
+	HandlerErrorResp HandlerErrorResp
+	RootObjectFn     RootObjectFn
 }
 
 func NewConfig() *Config {
@@ -202,10 +229,11 @@ func New(p *Config) *Handler {
 	}
 
 	return &Handler{
-		Schema:       p.Schema,
-		pretty:       p.Pretty,
-		graphiql:     p.GraphiQL,
-		playground:   p.Playground,
-		rootObjectFn: p.RootObjectFn,
+		Schema:           p.Schema,
+		pretty:           p.Pretty,
+		graphiql:         p.GraphiQL,
+		playground:       p.Playground,
+		rootObjectFn:     p.RootObjectFn,
+		handlerErrorResp: p.HandlerErrorResp,
 	}
 }

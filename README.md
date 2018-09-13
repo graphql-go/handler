@@ -9,7 +9,7 @@ package main
 
 import (
 	"net/http"
-	"github.com/graphql-go/handler"
+	"github.com/1046102779/handler"
 )
 
 func main() {
@@ -78,5 +78,5 @@ depending on the provided `Content-Type` header.
 
 ### Test
 ```bash
-$ go get github.com/graphql-go/handler
+$ go get github.com/1046102779/handler
 $ go build && go test ./...

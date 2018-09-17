@@ -25,7 +25,7 @@ type Handler struct {
 	graphiql         bool
 	playground       bool
 	rootObjectFn     RootObjectFn
-	handlerErrorResp HandlerErrorResp
+	handlerErrorResp HandlerErrorRespFn
 }
 type RequestOptions struct {
 	Query         string                 `json:"query" url:"query" schema:"query"`
@@ -200,14 +200,14 @@ type RootObjectFn func(ctx context.Context, r *http.Request) map[string]interfac
 	"message": "invalid user"
 }
 */
-type HandlerErrorResp func([]gqlerrors.FormattedError) interface{}
+type HandlerErrorRespFn func([]gqlerrors.FormattedError) interface{}
 
 type Config struct {
 	Schema           *graphql.Schema
 	Pretty           bool
 	GraphiQL         bool
 	Playground       bool
-	HandlerErrorResp HandlerErrorResp
+	HandlerErrorResp HandlerErrorRespFn
 	RootObjectFn     RootObjectFn
 }
 

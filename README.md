@@ -37,6 +37,72 @@ h := handler.New(&handler.Config{
 })
 ```
 
+### Creating a Custom Context
+
+```go
+package main
+
+import (
+	"context"
+	"net/http"
+
+	"github.com/graphql-go/graphql"
+	"github.com/graphql-go/handler"
+)
+
+type graphQLKey string
+
+func makeMeField() *graphql.Field {
+	userType := graphql.NewObject(
+		graphql.ObjectConfig{
+			Name: "User",
+			Fields: graphql.Fields{
+				"id": &graphql.Field{
+					Type: graphql.String,
+				},
+				"name": &graphql.Field{
+					Type: graphql.String,
+				},
+			},
+		},
+	)
+	return &graphql.Field{
+		Type: userType,
+		Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+			return p.Context.Value(graphQLKey("currentUser")), nil
+		},
+	}
+}
+
+func main() {
+	queryType := graphql.NewObject(
+		graphql.ObjectConfig{
+			Name: "Query",
+			Fields: graphql.Fields{
+				"me": makeMeField(),
+			},
+		},
+	)
+	schema, _ := graphql.NewSchema(graphql.SchemaConfig{
+		Query: queryType,
+	})
+	graphQLHandler := handler.New(&handler.Config{
+		Schema: &schema,
+	})
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := struct {
+			ID   int    `json:"id"`
+			Name string `json:"name"`
+		}{1, "cool user"}
+		ctx := context.WithValue(r.Context(), graphQLKey("currentUser"), user)
+		graphQLHandler.ContextHandler(ctx, w, r)
+	})
+
+	http.Handle("/graphql", h)
+	http.ListenAndServe(":8080", nil)
+}
+```
+
 ### Details
 
 The handler will accept requests with

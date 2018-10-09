@@ -26,13 +26,16 @@ type MultipartFile struct {
 	Header *multipart.FileHeader
 }
 
+type ResultCallbackFn func(ctx context.Context, params *graphql.Params, result *graphql.Result, responseBody []byte)
+
 type Handler struct {
-	Schema       *graphql.Schema
-	pretty       bool
-	graphiql     bool
-	playground   bool
-	rootObjectFn RootObjectFn
-	maxMemory    int64
+	Schema           *graphql.Schema
+	pretty           bool
+	graphiql         bool
+	playground       bool
+	rootObjectFn     RootObjectFn
+	resultCallbackFn ResultCallbackFn
+	maxMemory        int64
 }
 type RequestOptions struct {
 	Query         string                 `json:"query" url:"query" schema:"query"`
@@ -247,16 +250,21 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 	// use proper JSON Header
 	w.Header().Add("Content-Type", "application/json; charset=utf-8")
 
+	var buff []byte
 	if h.pretty {
 		w.WriteHeader(http.StatusOK)
-		buff, _ := json.MarshalIndent(result, "", "\t")
+		buff, _ = json.MarshalIndent(result, "", "\t")
 
 		w.Write(buff)
 	} else {
 		w.WriteHeader(http.StatusOK)
-		buff, _ := json.Marshal(result)
+		buff, _ = json.Marshal(result)
 
 		w.Write(buff)
+	}
+
+	if h.resultCallbackFn != nil {
+		h.resultCallbackFn(ctx, &params, result, buff)
 	}
 }
 
@@ -269,12 +277,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type RootObjectFn func(ctx context.Context, r *http.Request) map[string]interface{}
 
 type Config struct {
-	Schema       *graphql.Schema
-	Pretty       bool
-	GraphiQL     bool
-	Playground   bool
-	RootObjectFn RootObjectFn
-	MaxMemory    int64
+	Schema           *graphql.Schema
+	Pretty           bool
+	GraphiQL         bool
+	Playground       bool
+	RootObjectFn     RootObjectFn
+	ResultCallbackFn ResultCallbackFn
+	MaxMemory        int64
 }
 
 func NewConfig() *Config {
@@ -300,11 +309,12 @@ func New(p *Config) *Handler {
 	}
 
 	return &Handler{
-		Schema:       p.Schema,
-		pretty:       p.Pretty,
-		graphiql:     p.GraphiQL,
-		playground:   p.Playground,
-		rootObjectFn: p.RootObjectFn,
-		maxMemory:    maxMemory,
+		Schema:           p.Schema,
+		pretty:           p.Pretty,
+		graphiql:         p.GraphiQL,
+		playground:       p.Playground,
+		rootObjectFn:     p.RootObjectFn,
+		resultCallbackFn: p.ResultCallbackFn,
+		maxMemory:        maxMemory,
 	}
 }

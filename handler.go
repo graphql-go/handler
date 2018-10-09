@@ -180,8 +180,8 @@ func (h *Handler) handlerResp(result *graphql.Result) interface{} {
 		respErr = h.handlerErrorResp(result.Errors)
 	}
 	return map[string]interface{}{
-		"data":   result.Data,
-		"errors": respErr,
+		"data":  result.Data,
+		"error": respErr,
 	}
 }
 

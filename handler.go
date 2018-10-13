@@ -65,7 +65,7 @@ func NewRequestOptions(r *http.Request) *RequestOptions {
 		return reqOpt
 	}
 
-	if r.Method != "POST" {
+	if r.Method != http.MethodPost {
 		return &RequestOptions{}
 	}
 

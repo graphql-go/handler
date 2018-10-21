@@ -96,16 +96,24 @@ func TestHandler_BasicQuery_Pretty(t *testing.T) {
 	queryString := `query=query HeroNameQuery { hero { name } }&operationName=HeroNameQuery`
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
 
-	callbackCalled := false
+	requestCallbackCalled := false
+	resultCallbackCalled := false
 	h := handler.New(&handler.Config{
 		Schema: &testutil.StarWarsSchema,
 		Pretty: true,
+		RequestCallbackFn: func(ctx context.Context, w http.ResponseWriter, r *http.Request) context.Context {
+			requestCallbackCalled = true
+			w.Header().Add("X-Custom-Header", "header-value")
+			return context.WithValue(ctx, "custom", "value")
+		},
 		ResultCallbackFn: func(ctx context.Context, params *graphql.Params, result *graphql.Result, responseBody []byte) {
-			callbackCalled = true
+			resultCallbackCalled = true
 			if params.OperationName != "HeroNameQuery" {
 				t.Fatalf("OperationName passed to callback was not HeroNameQuery: %v", params.OperationName)
 			}
-
+			if ctx.Value("custom").(string) != "value" {
+				t.Fatalf("context was not feeled in RequestCallbackFn")
+			}
 			if result.HasErrors() {
 				t.Fatalf("unexpected graphql result errors")
 			}
@@ -115,10 +123,16 @@ func TestHandler_BasicQuery_Pretty(t *testing.T) {
 	if resp.Code != http.StatusOK {
 		t.Fatalf("unexpected server response %v", resp.Code)
 	}
+	if resp.Header()["X-Custom-Header"][0] != "header-value" {
+		t.Fatalf("HTTP headers was not feeled in RequestCallbackFn")
+	}
 	if !reflect.DeepEqual(result, expected) {
 		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
 	}
-	if !callbackCalled {
+	if !requestCallbackCalled {
+		t.Fatalf("RequestCallbackFn was not called when it should have been")
+	}
+	if !resultCallbackCalled {
 		t.Fatalf("ResultCallbackFn was not called when it should have been")
 	}
 }

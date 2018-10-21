@@ -19,14 +19,16 @@ const (
 )
 
 type ResultCallbackFn func(ctx context.Context, params *graphql.Params, result *graphql.Result, responseBody []byte)
+type RequestCallbackFn func(ctx context.Context, w http.ResponseWriter, r *http.Request) context.Context
 
 type Handler struct {
-	Schema           *graphql.Schema
-	pretty           bool
-	graphiql         bool
-	playground       bool
-	rootObjectFn     RootObjectFn
-	resultCallbackFn ResultCallbackFn
+	Schema            *graphql.Schema
+	pretty            bool
+	graphiql          bool
+	playground        bool
+	requestCallbackFn RequestCallbackFn
+	rootObjectFn      RootObjectFn
+	resultCallbackFn  ResultCallbackFn
 }
 type RequestOptions struct {
 	Query         string                 `json:"query" url:"query" schema:"query"`
@@ -178,19 +180,24 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 
 // ServeHTTP provides an entrypoint into executing graphQL queries.
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.ContextHandler(r.Context(), w, r)
+	ctx := r.Context()
+	if h.requestCallbackFn != nil {
+		ctx = h.requestCallbackFn(ctx, w, r)
+	}
+	h.ContextHandler(ctx, w, r)
 }
 
 // RootObjectFn allows a user to generate a RootObject per request
 type RootObjectFn func(ctx context.Context, r *http.Request) map[string]interface{}
 
 type Config struct {
-	Schema           *graphql.Schema
-	Pretty           bool
-	GraphiQL         bool
-	Playground       bool
-	RootObjectFn     RootObjectFn
-	ResultCallbackFn ResultCallbackFn
+	Schema            *graphql.Schema
+	Pretty            bool
+	GraphiQL          bool
+	Playground        bool
+	RequestCallbackFn RequestCallbackFn
+	RootObjectFn      RootObjectFn
+	ResultCallbackFn  ResultCallbackFn
 }
 
 func NewConfig() *Config {
@@ -211,11 +218,12 @@ func New(p *Config) *Handler {
 	}
 
 	return &Handler{
-		Schema:           p.Schema,
-		pretty:           p.Pretty,
-		graphiql:         p.GraphiQL,
-		playground:       p.Playground,
-		rootObjectFn:     p.RootObjectFn,
-		resultCallbackFn: p.ResultCallbackFn,
+		Schema:            p.Schema,
+		pretty:            p.Pretty,
+		graphiql:          p.GraphiQL,
+		playground:        p.Playground,
+		requestCallbackFn: p.RequestCallbackFn,
+		rootObjectFn:      p.RootObjectFn,
+		resultCallbackFn:  p.ResultCallbackFn,
 	}
 }

@@ -175,7 +175,7 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 
 // handle error response
 func (h *Handler) handlerResp(result *graphql.Result) interface{} {
-	var respErr interface{}
+	var respErr interface{} = result.Errors
 	if h.handlerErrorResp != nil {
 		respErr = h.handlerErrorResp(result.Errors)
 	}

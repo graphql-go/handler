@@ -28,8 +28,9 @@ type Handler struct {
 	playground       bool
 	rootObjectFn     RootObjectFn
 	resultCallbackFn ResultCallbackFn
-	customErrorFormatter func(err error) gqlerrors.FormattedError
+	formatErrorFn    func(err error) gqlerrors.FormattedError
 }
+
 type RequestOptions struct {
 	Query         string                 `json:"query" url:"query" schema:"query"`
 	Variables     map[string]interface{} `json:"variables" url:"variables" schema:"variables"`
@@ -128,21 +129,21 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 
 	// execute graphql query
 	params := graphql.Params{
-		Schema:              *h.Schema,
-		RequestString:       opts.Query,
-		VariableValues:      opts.Variables,
-		OperationName:       opts.OperationName,
-		Context:             ctx,
+		Schema:         *h.Schema,
+		RequestString:  opts.Query,
+		VariableValues: opts.Variables,
+		OperationName:  opts.OperationName,
+		Context:        ctx,
 	}
 	if h.rootObjectFn != nil {
 		params.RootObject = h.rootObjectFn(ctx, r)
 	}
 	result := graphql.Do(params)
 
-	if customFormatter := h.customErrorFormatter; customFormatter != nil {
+	if formatErrorFn := h.formatErrorFn; formatErrorFn != nil {
 		formatted := make([]gqlerrors.FormattedError, len(result.Errors))
 		for i, err := range result.Errors {
-			formatted[i] = customFormatter(err.OriginalError())
+			formatted[i] = formatErrorFn(err.OriginalError())
 		}
 		result.Errors = formatted
 	}
@@ -201,7 +202,7 @@ type Config struct {
 	Playground       bool
 	RootObjectFn     RootObjectFn
 	ResultCallbackFn ResultCallbackFn
-	CustomErrorFormatter func(err error) gqlerrors.FormattedError
+	FormatErrorFn    func(err error) gqlerrors.FormattedError
 }
 
 func NewConfig() *Config {
@@ -229,6 +230,6 @@ func New(p *Config) *Handler {
 		playground:       p.Playground,
 		rootObjectFn:     p.RootObjectFn,
 		resultCallbackFn: p.ResultCallbackFn,
-		customErrorFormatter: p.CustomErrorFormatter,
+		formatErrorFn:    p.FormatErrorFn,
 	}
 }

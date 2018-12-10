@@ -29,7 +29,7 @@ type Handler struct {
 	playground       bool
 	rootObjectFn     RootObjectFn
 	resultCallbackFn ResultCallbackFn
-	formatErrorFn    func(err gqlerrors.FormattedError) gqlerrors.FormattedError
+	formatErrorFn    func(err error) gqlerrors.FormattedError
 }
 
 type RequestOptions struct {
@@ -144,7 +144,7 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 	if formatErrorFn := h.formatErrorFn; formatErrorFn != nil && len(result.Errors) > 0 {
 		formatted := make([]gqlerrors.FormattedError, len(result.Errors))
 		for i, formattedError := range result.Errors {
-			formatted[i] = formatErrorFn(formattedError)
+			formatted[i] = formatErrorFn(formattedError.OriginalError())
 		}
 		result.Errors = formatted
 	}
@@ -203,7 +203,7 @@ type Config struct {
 	Playground       bool
 	RootObjectFn     RootObjectFn
 	ResultCallbackFn ResultCallbackFn
-	FormatErrorFn    func(err gqlerrors.FormattedError) gqlerrors.FormattedError
+	FormatErrorFn    func(err error) gqlerrors.FormattedError
 }
 
 func NewConfig() *Config {

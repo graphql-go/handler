@@ -2,7 +2,6 @@ package handler_test
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -215,15 +214,15 @@ func TestHandler_BasicQuery_WithRootObjFn(t *testing.T) {
 }
 
 type customError struct {
-	error
+	message string
 }
 
 func (e customError) Error() string {
-	return e.error.Error()
+	return fmt.Sprintf("%s", e.message)
 }
 
 func TestHandler_BasicQuery_WithFormatErrorFn(t *testing.T) {
-	resolverError := customError{error: errors.New("resolver error")}
+	resolverError := customError{message: "resolver error"}
 	myNameQuery := graphql.NewObject(graphql.ObjectConfig{
 		Name: "Query",
 		Fields: graphql.Fields{
@@ -252,9 +251,6 @@ func TestHandler_BasicQuery_WithFormatErrorFn(t *testing.T) {
 			},
 		},
 		Path: []interface{}{"name"},
-		Extensions: map[string]interface{}{
-			"fromFormatFn": "FROM_FORMAT_FN",
-		},
 	}
 
 	expected := &graphql.Result{
@@ -271,22 +267,16 @@ func TestHandler_BasicQuery_WithFormatErrorFn(t *testing.T) {
 	h := handler.New(&handler.Config{
 		Schema: &myNameSchema,
 		Pretty: true,
-		FormatErrorFn: func(err gqlerrors.FormattedError) gqlerrors.FormattedError {
+		FormatErrorFn: func(err error) gqlerrors.FormattedError {
 			formatErrorFnCalled = true
-			originalError := err.OriginalError()
-			switch errType := originalError.(type) {
-			case customError:
+			var formatted gqlerrors.FormattedError
+			switch err := err.(type) {
+			case *gqlerrors.Error:
+				formatted = gqlerrors.FormatError(err)
 			default:
-				t.Fatalf("unexpected error type: %v", reflect.TypeOf(errType))
+				t.Fatalf("unexpected error type: %v", reflect.TypeOf(err))
 			}
-			return gqlerrors.FormattedError{
-				Message:   err.Message,
-				Locations: err.Locations,
-				Path:      err.Path,
-				Extensions: map[string]interface{}{
-					"fromFormatFn": "FROM_FORMAT_FN",
-				},
-			}
+			return formatted
 		},
 	})
 	result, resp := executeTest(t, h, req)

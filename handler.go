@@ -12,6 +12,8 @@ import (
 	"github.com/graphql-go/graphql"
 
 	"context"
+
+	"github.com/graphql-go/graphql/gqlerrors"
 )
 
 const (
@@ -36,7 +38,9 @@ type Handler struct {
 	rootObjectFn     RootObjectFn
 	resultCallbackFn ResultCallbackFn
 	maxMemory        int64
+	formatErrorFn    func(err error) gqlerrors.FormattedError
 }
+
 type RequestOptions struct {
 	Query         string                 `json:"query" url:"query" schema:"query"`
 	Variables     map[string]interface{} `json:"variables" url:"variables" schema:"variables"`
@@ -74,7 +78,7 @@ func NewRequestOptions(r *http.Request, maxMemory int64) *RequestOptions {
 		return reqOpt
 	}
 
-	if r.Method != "POST" {
+	if r.Method != http.MethodPost {
 		return &RequestOptions{}
 	}
 
@@ -229,6 +233,14 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 	}
 	result := graphql.Do(params)
 
+	if formatErrorFn := h.formatErrorFn; formatErrorFn != nil && len(result.Errors) > 0 {
+		formatted := make([]gqlerrors.FormattedError, len(result.Errors))
+		for i, formattedError := range result.Errors {
+			formatted[i] = formatErrorFn(formattedError.OriginalError())
+		}
+		result.Errors = formatted
+	}
+
 	if h.graphiql {
 		acceptHeader := r.Header.Get("Accept")
 		_, raw := r.URL.Query()["raw"]
@@ -284,6 +296,7 @@ type Config struct {
 	RootObjectFn     RootObjectFn
 	ResultCallbackFn ResultCallbackFn
 	MaxMemory        int64
+	FormatErrorFn    func(err error) gqlerrors.FormattedError
 }
 
 func NewConfig() *Config {
@@ -299,6 +312,7 @@ func New(p *Config) *Handler {
 	if p == nil {
 		p = NewConfig()
 	}
+
 	if p.Schema == nil {
 		panic("undefined GraphQL schema")
 	}
@@ -316,5 +330,6 @@ func New(p *Config) *Handler {
 		rootObjectFn:     p.RootObjectFn,
 		resultCallbackFn: p.ResultCallbackFn,
 		maxMemory:        maxMemory,
+		formatErrorFn:    p.FormatErrorFn,
 	}
 }

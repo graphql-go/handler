@@ -24,7 +24,7 @@ func renderPlayground(w http.ResponseWriter, r *http.Request) {
 
 	d := playgroundData{
 		PlaygroundVersion:    graphcoolPlaygroundVersion,
-		Endpoint:             "/graphql",
+		Endpoint:             r.URL.Path,
 		SubscriptionEndpoint: fmt.Sprintf("ws://%v/subscriptions", r.Host),
 		SetTitle:             true,
 	}

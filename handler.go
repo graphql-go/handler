@@ -22,6 +22,8 @@ const (
 
 type ResultCallbackFn func(ctx context.Context, params *graphql.Params, result *graphql.Result, responseBody []byte)
 
+type ResultCallbackFnV2 func(ctx context.Context, params *graphql.Params, result *graphql.Result, w http.ResponseWriter, r *http.Request)
+
 type Handler struct {
 	Schema           *graphql.Schema
 	pretty           bool
@@ -29,6 +31,7 @@ type Handler struct {
 	playground       bool
 	rootObjectFn     RootObjectFn
 	resultCallbackFn ResultCallbackFn
+	resultCallbackFnV2 ResultCallbackFnV2
 	formatErrorFn    func(err error) gqlerrors.FormattedError
 }
 
@@ -186,6 +189,10 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 	if h.resultCallbackFn != nil {
 		h.resultCallbackFn(ctx, &params, result, buff)
 	}
+
+	if h.resultCallbackFnV2 != nil {
+		h.resultCallbackFnV2(ctx, &params, result, w, r)
+	}
 }
 
 // ServeHTTP provides an entrypoint into executing graphQL queries.
@@ -203,6 +210,7 @@ type Config struct {
 	Playground       bool
 	RootObjectFn     RootObjectFn
 	ResultCallbackFn ResultCallbackFn
+	ResultCallbackFnV2 ResultCallbackFnV2
 	FormatErrorFn    func(err error) gqlerrors.FormattedError
 }
 
@@ -231,6 +239,7 @@ func New(p *Config) *Handler {
 		playground:       p.Playground,
 		rootObjectFn:     p.RootObjectFn,
 		resultCallbackFn: p.ResultCallbackFn,
+		resultCallbackFnV2: p.ResultCallbackFnV2,
 		formatErrorFn:    p.FormatErrorFn,
 	}
 }

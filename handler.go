@@ -63,7 +63,7 @@ func getFromForm(values url.Values) *RequestOptions {
 	return nil
 }
 
-// RequestOptions Parses a http.Request into GraphQL request options struct
+// NewRequestOptions Parses a http.Request into GraphQL request options struct
 func NewRequestOptions(r *http.Request) *RequestOptions {
 	if reqOpt := getFromForm(r.URL.Query()); reqOpt != nil {
 		return reqOpt

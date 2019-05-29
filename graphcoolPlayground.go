@@ -100,6 +100,9 @@ add "&raw" to the end of the URL within a browser.
         endpoint: {{ .Endpoint }},
         subscriptionEndpoint: {{ .SubscriptionEndpoint }},
         setTitle: {{ .SetTitle }}
+        settings:{
+          "schema.polling.interval": 10000,
+        }
       })
     })</script>
 </body>

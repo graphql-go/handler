@@ -13,6 +13,8 @@ import (
 	"context"
 
 	"github.com/graphql-go/graphql"
+	"github.com/graphql-go/graphql/gqlerrors"
+	"github.com/graphql-go/graphql/language/location"
 	"github.com/graphql-go/graphql/testutil"
 	"github.com/graphql-go/handler"
 )
@@ -205,6 +207,84 @@ func TestHandler_BasicQuery_WithRootObjFn(t *testing.T) {
 	result, resp := executeTest(t, h, req)
 	if resp.Code != http.StatusOK {
 		t.Fatalf("unexpected server response %v", resp.Code)
+	}
+	if !reflect.DeepEqual(result, expected) {
+		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
+	}
+}
+
+type customError struct {
+	message string
+}
+
+func (e customError) Error() string {
+	return fmt.Sprintf("%s", e.message)
+}
+
+func TestHandler_BasicQuery_WithFormatErrorFn(t *testing.T) {
+	resolverError := customError{message: "resolver error"}
+	myNameQuery := graphql.NewObject(graphql.ObjectConfig{
+		Name: "Query",
+		Fields: graphql.Fields{
+			"name": &graphql.Field{
+				Name: "name",
+				Type: graphql.String,
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					return nil, resolverError
+				},
+			},
+		},
+	})
+	myNameSchema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query: myNameQuery,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	customFormattedError := gqlerrors.FormattedError{
+		Message: resolverError.Error(),
+		Locations: []location.SourceLocation{
+			location.SourceLocation{
+				Line:   1,
+				Column: 2,
+			},
+		},
+		Path: []interface{}{"name"},
+	}
+
+	expected := &graphql.Result{
+		Data: map[string]interface{}{
+			"name": nil,
+		},
+		Errors: []gqlerrors.FormattedError{customFormattedError},
+	}
+
+	queryString := `query={name}`
+	req, _ := http.NewRequest("GET", fmt.Sprintf("/graphql?%v", queryString), nil)
+
+	formatErrorFnCalled := false
+	h := handler.New(&handler.Config{
+		Schema: &myNameSchema,
+		Pretty: true,
+		FormatErrorFn: func(err error) gqlerrors.FormattedError {
+			formatErrorFnCalled = true
+			var formatted gqlerrors.FormattedError
+			switch err := err.(type) {
+			case *gqlerrors.Error:
+				formatted = gqlerrors.FormatError(err)
+			default:
+				t.Fatalf("unexpected error type: %v", reflect.TypeOf(err))
+			}
+			return formatted
+		},
+	})
+	result, resp := executeTest(t, h, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("unexpected server response %v", resp.Code)
+	}
+	if !formatErrorFnCalled {
+		t.Fatalf("FormatErrorFn was not called when it should have been")
 	}
 	if !reflect.DeepEqual(result, expected) {
 		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))

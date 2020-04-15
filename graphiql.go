@@ -4,21 +4,27 @@ import (
 	"encoding/json"
 	"html/template"
 	"net/http"
+	"strings"
 
 	"github.com/graphql-go/graphql"
 )
 
-// graphiqlData is the page data structure of the rendered GraphiQL page
+// data is the page data structure of the rendered GraphiQL page
 type graphiqlData struct {
-	GraphiqlVersion string
-	QueryString     string
-	VariablesString string
-	OperationName   string
-	ResultString    string
+	GraphiqlVersion              string
+	SubscriptionTransportVersion string
+	QueryString                  string
+	ResultString                 string
+	VariablesString              string
+	OperationName                string
+	Endpoint                     template.URL
+	SubscriptionEndpoint         template.URL
+	UsingHTTP                    bool
+	UsingWS                      bool
 }
 
 // renderGraphiQL renders the GraphiQL GUI
-func renderGraphiQL(w http.ResponseWriter, params graphql.Params) {
+func renderGraphiQL(w http.ResponseWriter, params graphql.Params, handler Handler) {
 	t := template.New("GraphiQL")
 	t, err := t.Parse(graphiqlTemplate)
 	if err != nil {
@@ -50,12 +56,29 @@ func renderGraphiQL(w http.ResponseWriter, params graphql.Params) {
 		resString = string(result)
 	}
 
+	isEndpointUsingWS := strings.HasPrefix(handler.Endpoint, "ws://")
+	UsingHTTP := !isEndpointUsingWS
+	UsingWS := isEndpointUsingWS || handler.SubscriptionsEndpoint != ""
+	SubscriptionEndpoint := ""
+	if UsingWS {
+		if isEndpointUsingWS {
+			SubscriptionEndpoint = handler.Endpoint
+		} else {
+			SubscriptionEndpoint = handler.SubscriptionsEndpoint
+		}
+	}
+
 	d := graphiqlData{
-		GraphiqlVersion: graphiqlVersion,
-		QueryString:     params.RequestString,
-		ResultString:    resString,
-		VariablesString: varsString,
-		OperationName:   params.OperationName,
+		GraphiqlVersion:              graphiqlVersion,
+		SubscriptionTransportVersion: subscriptionTransportVersion,
+		QueryString:                  params.RequestString,
+		ResultString:                 resString,
+		VariablesString:              varsString,
+		OperationName:                params.OperationName,
+		Endpoint:                     template.URL(handler.Endpoint),
+		SubscriptionEndpoint:         template.URL(SubscriptionEndpoint),
+		UsingHTTP:                    UsingHTTP,
+		UsingWS:                      UsingWS,
 	}
 	err = t.ExecuteTemplate(w, "index", d)
 	if err != nil {
@@ -67,6 +90,9 @@ func renderGraphiQL(w http.ResponseWriter, params graphql.Params) {
 
 // graphiqlVersion is the current version of GraphiQL
 const graphiqlVersion = "0.11.11"
+
+// subscriptionTransportVersion is the current version of the subscription transport of GraphiQL
+const subscriptionTransportVersion = "0.8.2"
 
 // tmpl is the page template to render GraphiQL
 const graphiqlTemplate = `
@@ -103,6 +129,17 @@ add "&raw" to the end of the URL within a browser.
   <script src="//cdn.jsdelivr.net/react/15.4.2/react.min.js"></script>
   <script src="//cdn.jsdelivr.net/react/15.4.2/react-dom.min.js"></script>
   <script src="//cdn.jsdelivr.net/npm/graphiql@{{ .GraphiqlVersion }}/graphiql.min.js"></script>
+
+  {{ if .UsingHTTP }}
+    <script src="//cdn.jsdelivr.net/fetch/2.0.1/fetch.min.js"></script>
+  {{ end }}
+  {{ if .UsingWS }}
+    <script src="//unpkg.com/subscriptions-transport-ws@{{ .SubscriptionTransportVersion }}/browser/client.js"></script>
+  {{ end }}
+  {{ if and .UsingWS .UsingHTTP }}
+    <script src="//unpkg.com/graphiql-subscriptions-fetcher@0.0.2/browser/client.js"></script>
+  {{ end }}
+
 </head>
 <body>
   <div id="graphiql">Loading...</div>
@@ -118,10 +155,8 @@ add "&raw" to the end of the URL within a browser.
     });
 
     // Produce a Location query string from a parameter object.
-    function locationQuery(params) {
-      return '?' + Object.keys(params).filter(function (key) {
-        return Boolean(params[key]);
-      }).map(function (key) {
+    function locationQuery(params, location) {
+      return (location ? location: '') + '?' + Object.keys(params).map(function (key) {
         return encodeURIComponent(key) + '=' +
           encodeURIComponent(params[key]);
       }).join('&');
@@ -140,28 +175,49 @@ add "&raw" to the end of the URL within a browser.
         otherParams[k] = parameters[k];
       }
     }
-    var fetchURL = locationQuery(otherParams);
 
-    // Defines a GraphQL fetcher using the fetch API.
-    function graphQLFetcher(graphQLParams) {
-      return fetch(fetchURL, {
-        method: 'post',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(graphQLParams),
-        credentials: 'include',
-      }).then(function (response) {
-        return response.text();
-      }).then(function (responseBody) {
-        try {
-          return JSON.parse(responseBody);
-        } catch (error) {
-          return responseBody;
-        }
+    {{ if .UsingWS }}
+      var subscriptionsClient = new window.SubscriptionsTransportWs.SubscriptionClient({{ .SubscriptionEndpoint }}, {
+        reconnect: true
       });
-    }
+      var graphQLWSFetcher = subscriptionsClient.request.bind(subscriptionsClient);
+    {{ end }}
+
+    {{ if .UsingHTTP }}
+      var fetchURL = locationQuery(otherParams, {{ .Endpoint }});
+
+      // Defines a GraphQL fetcher using the fetch API.
+      function graphQLHttpFetcher(graphQLParams) {
+        return fetch(fetchURL, {
+          method: 'post',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(graphQLParams),
+          credentials: 'include',
+        }).then(function (response) {
+          return response.text();
+        }).then(function (responseBody) {
+          try {
+            return JSON.parse(responseBody);
+          } catch (error) {
+            return responseBody;
+          }
+        });
+      }
+    {{ end }}
+
+    {{ if and .UsingWS .UsingHTTP }}
+      var fetcher = window.GraphiQLSubscriptionsFetcher.graphQLFetcher(subscriptionsClient, graphQLHttpFetcher);
+    {{ else }}
+      {{ if .UsingWS }}
+        var fetcher = graphQLWSFetcher;
+      {{ end }}
+      {{ if .UsingHTTP }}
+        var fetcher = graphQLHttpFetcher;
+      {{ end }}
+    {{ end }}
 
     // When the query and variables string is edited, update the URL bar so
     // that it can be easily shared.
@@ -187,7 +243,7 @@ add "&raw" to the end of the URL within a browser.
     // Render <GraphiQL /> into the body.
     ReactDOM.render(
       React.createElement(GraphiQL, {
-        fetcher: graphQLFetcher,
+        fetcher: fetcher,
         onEditQuery: onEditQuery,
         onEditVariables: onEditVariables,
         onEditOperationName: onEditOperationName,

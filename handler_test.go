@@ -245,7 +245,7 @@ func TestHandler_BasicQuery_WithFormatErrorFn(t *testing.T) {
 	customFormattedError := gqlerrors.FormattedError{
 		Message: resolverError.Error(),
 		Locations: []location.SourceLocation{
-			location.SourceLocation{
+			{
 				Line:   1,
 				Column: 2,
 			},

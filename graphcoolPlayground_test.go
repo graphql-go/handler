@@ -62,9 +62,11 @@ func TestRenderPlayground(t *testing.T) {
 			req.Header.Set("Accept", tc.accept)
 
 			h := handler.New(&handler.Config{
-				Schema:     &testutil.StarWarsSchema,
-				GraphiQL:   false,
-				Playground: tc.playgroundEnabled,
+				Schema:   &testutil.StarWarsSchema,
+				GraphiQL: false,
+				Playground: &handler.PlaygroundConfig{
+					Enabled: tc.playgroundEnabled,
+				},
 			})
 
 			rr := httptest.NewRecorder()

@@ -22,11 +22,17 @@ const (
 
 type ResultCallbackFn func(ctx context.Context, params *graphql.Params, result *graphql.Result, responseBody []byte)
 
+type PlaygroundConfig struct {
+	Enabled  bool
+	Endpoint string
+	Settings *PlaygroundSettings
+}
+
 type Handler struct {
 	Schema           *graphql.Schema
 	pretty           bool
 	graphiql         bool
-	playground       bool
+	playground       *PlaygroundConfig
 	rootObjectFn     RootObjectFn
 	resultCallbackFn ResultCallbackFn
 	formatErrorFn    func(err error) gqlerrors.FormattedError
@@ -158,11 +164,11 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 		}
 	}
 
-	if h.playground {
+	if h.playground != nil && h.playground.Enabled {
 		acceptHeader := r.Header.Get("Accept")
 		_, raw := r.URL.Query()["raw"]
 		if !raw && !strings.Contains(acceptHeader, "application/json") && strings.Contains(acceptHeader, "text/html") {
-			renderPlayground(w, r)
+			h.renderPlayground(w, r)
 			return
 		}
 	}
@@ -200,7 +206,7 @@ type Config struct {
 	Schema           *graphql.Schema
 	Pretty           bool
 	GraphiQL         bool
-	Playground       bool
+	Playground       *PlaygroundConfig
 	RootObjectFn     RootObjectFn
 	ResultCallbackFn ResultCallbackFn
 	FormatErrorFn    func(err error) gqlerrors.FormattedError
@@ -208,10 +214,12 @@ type Config struct {
 
 func NewConfig() *Config {
 	return &Config{
-		Schema:     nil,
-		Pretty:     true,
-		GraphiQL:   true,
-		Playground: false,
+		Schema:   nil,
+		Pretty:   true,
+		GraphiQL: true,
+		Playground: &PlaygroundConfig{
+			Enabled: false,
+		},
 	}
 }
 

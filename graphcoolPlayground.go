@@ -6,15 +6,59 @@ import (
 	"net/http"
 )
 
+type EditorCursorShape string
+
+const (
+	Line      EditorCursorShape = "line"
+	Block     EditorCursorShape = "block"
+	Underline EditorCursorShape = "underline"
+)
+
+type EditorTheme string
+
+const (
+	Dark  EditorTheme = "dark"
+	Light EditorTheme = "light"
+)
+
+type RequestCredentials string
+
+const (
+	Omit       RequestCredentials = "omit"
+	Include    RequestCredentials = "include"
+	SameOrigin RequestCredentials = "same-origin"
+)
+
+type PlaygroundSettings struct {
+	EditorCursorShape           EditorCursorShape  `json:"editor.cursorShape,omitempty"`
+	EditorFontFamily            string             `json:"editor.fontFamily,omitempty"`
+	EditorFontSize              float64            `json:"editor.fontSize,omitempty"`
+	EditorReuseHeaders          bool               `json:"editor.reuseHeaders,omitempty"`
+	EditorTheme                 EditorTheme        `json:"editor.theme,omitempty"`
+	GeneralBetaUpdates          bool               `json:"general.betaUpdates,omitempty"`
+	PrettierPrintWidth          float64            `json:"prettier.printWidth,omitempty"`
+	PrettierTabWidth            float64            `json:"prettier.tabWidth,omitempty"`
+	PrettierUseTabs             bool               `json:"prettier.useTabs,omitempty"`
+	RequestCredentials          RequestCredentials `json:"request.credentials,omitempty"`
+	RequestGlobalHeaders        map[string]string  `json:"request.globalHeaders,omitempty"`
+	SchemaPollingEnable         bool               `json:"schema.polling.enable,omitempty"`
+	SchemaPollingEndpointFilter string             `json:"schema.polling.endpointFilter,omitempty"`
+	SchemaPollingInterval       float64            `json:"schema.polling.interval,omitempty"`
+	SchemaDisableComments       bool               `json:"schema.disableComments,omitempty"`
+	TracingHideTracingResponse  bool               `json:"tracing.hideTracingResponse,omitempty"`
+	TracingTracingSupported     bool               `json:"tracing.tracingSupported,omitempty"`
+}
+
 type playgroundData struct {
 	PlaygroundVersion    string
 	Endpoint             string
 	SubscriptionEndpoint string
 	SetTitle             bool
+	Settings             *PlaygroundSettings
 }
 
 // renderPlayground renders the Playground GUI
-func renderPlayground(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) renderPlayground(w http.ResponseWriter, r *http.Request) {
 	t := template.New("Playground")
 	t, err := t.Parse(graphcoolPlaygroundTemplate)
 	if err != nil {
@@ -22,12 +66,23 @@ func renderPlayground(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var endpoint string
+	if h.playground.Endpoint != "" {
+		// in case the endpoint was explicitly set in the configuration use it here
+		endpoint = h.playground.Endpoint
+	} else {
+		// in case no endpoint was specified assume the graphql api is served under the request's url
+		endpoint = r.URL.Path
+	}
+
 	d := playgroundData{
 		PlaygroundVersion:    graphcoolPlaygroundVersion,
-		Endpoint:             r.URL.Path,
+		Endpoint:             endpoint,
 		SubscriptionEndpoint: fmt.Sprintf("ws://%v/subscriptions", r.Host),
 		SetTitle:             true,
+		Settings:             h.playground.Settings,
 	}
+
 	err = t.ExecuteTemplate(w, "index", d)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -99,7 +154,8 @@ add "&raw" to the end of the URL within a browser.
         // options as 'endpoint' belong here
         endpoint: {{ .Endpoint }},
         subscriptionEndpoint: {{ .SubscriptionEndpoint }},
-        setTitle: {{ .SetTitle }}
+        setTitle: {{ .SetTitle }},
+		settings: {{ .Settings }}
       })
     })</script>
 </body>

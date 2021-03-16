@@ -102,6 +102,8 @@ add "&raw" to the end of the URL within a browser.
   <script src="//cdn.jsdelivr.net/fetch/0.9.0/fetch.min.js"></script>
   <script src="//cdn.jsdelivr.net/react/15.4.2/react.min.js"></script>
   <script src="//cdn.jsdelivr.net/react/15.4.2/react-dom.min.js"></script>
+  <script src="https://unpkg.com/subscriptions-transport-ws@0.5.4/browser/client.js"></script>
+  <script src="https://unpkg.com/graphiql-subscriptions-fetcher@0.0.2/browser/client.js"></script>
   <script src="//cdn.jsdelivr.net/npm/graphiql@{{ .GraphiqlVersion }}/graphiql.min.js"></script>
 </head>
 <body>
@@ -184,10 +186,12 @@ add "&raw" to the end of the URL within a browser.
       history.replaceState(null, null, locationQuery(parameters));
     }
 
+    var subscriptionsClient = new SubscriptionsTransportWs.SubscriptionClient("ws://"+document.location.hostname+":"+ document.location.port+"/subscriptions", { reconnect: true });
+    var subscriptionsFetcher = GraphiQLSubscriptionsFetcher.graphQLFetcher(subscriptionsClient,graphQLFetcher);
     // Render <GraphiQL /> into the body.
     ReactDOM.render(
       React.createElement(GraphiQL, {
-        fetcher: graphQLFetcher,
+        fetcher: subscriptionsFetcher,
         onEditQuery: onEditQuery,
         onEditVariables: onEditVariables,
         onEditOperationName: onEditOperationName,

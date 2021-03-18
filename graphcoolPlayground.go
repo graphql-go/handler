@@ -14,7 +14,7 @@ type playgroundData struct {
 }
 
 // renderPlayground renders the Playground GUI
-func renderPlayground(w http.ResponseWriter, r *http.Request) {
+func renderPlayground(w http.ResponseWriter, r *http.Request, endpoint string) {
 	t := template.New("Playground")
 	t, err := t.Parse(graphcoolPlaygroundTemplate)
 	if err != nil {
@@ -24,7 +24,7 @@ func renderPlayground(w http.ResponseWriter, r *http.Request) {
 
 	d := playgroundData{
 		PlaygroundVersion:    graphcoolPlaygroundVersion,
-		Endpoint:             r.URL.Path,
+		Endpoint:             endpoint,
 		SubscriptionEndpoint: fmt.Sprintf("ws://%v/subscriptions", r.Host),
 		SetTitle:             true,
 	}

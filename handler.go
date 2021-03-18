@@ -24,12 +24,13 @@ type ResultCallbackFn func(ctx context.Context, params *graphql.Params, result *
 
 type Handler struct {
 	Schema           *graphql.Schema
-	pretty           bool
+	formatErrorFn    func(err error) gqlerrors.FormattedError
 	graphiql         bool
 	playground       bool
-	rootObjectFn     RootObjectFn
+	pretty           bool
 	resultCallbackFn ResultCallbackFn
-	formatErrorFn    func(err error) gqlerrors.FormattedError
+	rootObjectFn     RootObjectFn
+	tracer           graphql.Tracer
 }
 
 type RequestOptions struct {
@@ -130,11 +131,12 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 
 	// execute graphql query
 	params := graphql.Params{
-		Schema:         *h.Schema,
-		RequestString:  opts.Query,
-		VariableValues: opts.Variables,
-		OperationName:  opts.OperationName,
 		Context:        ctx,
+		OperationName:  opts.OperationName,
+		RequestString:  opts.Query,
+		Schema:         *h.Schema,
+		Tracer:         h.tracer,
+		VariableValues: opts.Variables,
 	}
 	if h.rootObjectFn != nil {
 		params.RootObject = h.rootObjectFn(ctx, r)
@@ -197,13 +199,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type RootObjectFn func(ctx context.Context, r *http.Request) map[string]interface{}
 
 type Config struct {
-	Schema           *graphql.Schema
-	Pretty           bool
+	FormatErrorFn    func(err error) gqlerrors.FormattedError
 	GraphiQL         bool
 	Playground       bool
-	RootObjectFn     RootObjectFn
+	Pretty           bool
 	ResultCallbackFn ResultCallbackFn
-	FormatErrorFn    func(err error) gqlerrors.FormattedError
+	RootObjectFn     RootObjectFn
+	Schema           *graphql.Schema
+	Tracer           graphql.Tracer
 }
 
 func NewConfig() *Config {
@@ -226,11 +229,12 @@ func New(p *Config) *Handler {
 
 	return &Handler{
 		Schema:           p.Schema,
-		pretty:           p.Pretty,
+		formatErrorFn:    p.FormatErrorFn,
 		graphiql:         p.GraphiQL,
 		playground:       p.Playground,
-		rootObjectFn:     p.RootObjectFn,
+		pretty:           p.Pretty,
 		resultCallbackFn: p.ResultCallbackFn,
-		formatErrorFn:    p.FormatErrorFn,
+		rootObjectFn:     p.RootObjectFn,
+		tracer:           p.Tracer,
 	}
 }

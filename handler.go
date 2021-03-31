@@ -27,6 +27,7 @@ type Handler struct {
 	pretty           bool
 	graphiql         bool
 	playground       bool
+	schemaFn         SchemaFn
 	rootObjectFn     RootObjectFn
 	resultCallbackFn ResultCallbackFn
 	formatErrorFn    func(err error) gqlerrors.FormattedError
@@ -128,9 +129,16 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 	// get query
 	opts := NewRequestOptions(r)
 
+	schema := h.Schema
+	if h.schemaFn != nil {
+		if newSchema := h.schemaFn(ctx, r); newSchema != nil {
+			schema = newSchema
+		}
+	}
+
 	// execute graphql query
 	params := graphql.Params{
-		Schema:         *h.Schema,
+		Schema:         *schema,
 		RequestString:  opts.Query,
 		VariableValues: opts.Variables,
 		OperationName:  opts.OperationName,
@@ -196,11 +204,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // RootObjectFn allows a user to generate a RootObject per request
 type RootObjectFn func(ctx context.Context, r *http.Request) map[string]interface{}
 
+// SchemaFn allows a user to provide a Schema per request
+type SchemaFn func(ctx context.Context, r *http.Request) *graphql.Schema
+
 type Config struct {
 	Schema           *graphql.Schema
 	Pretty           bool
 	GraphiQL         bool
 	Playground       bool
+	SchemaFn         SchemaFn
 	RootObjectFn     RootObjectFn
 	ResultCallbackFn ResultCallbackFn
 	FormatErrorFn    func(err error) gqlerrors.FormattedError
@@ -229,6 +241,7 @@ func New(p *Config) *Handler {
 		pretty:           p.Pretty,
 		graphiql:         p.GraphiQL,
 		playground:       p.Playground,
+		schemaFn:         p.SchemaFn,
 		rootObjectFn:     p.RootObjectFn,
 		resultCallbackFn: p.ResultCallbackFn,
 		formatErrorFn:    p.FormatErrorFn,

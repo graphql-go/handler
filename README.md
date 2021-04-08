@@ -37,6 +37,24 @@ h := handler.New(&handler.Config{
 })
 ```
 
+### Using Multipart Form Uploads
+
+This handler supports the
+[GraphQL multipart request specification](https://github.com/jaydenseric/graphql-multipart-request-spec).
+All file uploads will be made available as the following Scalar that you can add to your GraphQL schemas
+
+```go
+var UploadScalar = graphql.NewScalar(graphql.ScalarConfig{
+	Name: "Upload",
+	ParseValue: func(value interface{}) interface{} {
+		if v, ok := value.(*handler.MultipartFile); ok {
+			return v
+		}
+		return nil
+	},
+})
+```
+
 ### Details
 
 The handler will accept requests with
@@ -71,6 +89,9 @@ depending on the provided `Content-Type` header.
   * **`application/graphql`**: The POST body will be parsed as GraphQL
     query string, which provides the `query` parameter.
 
+  * **`multipart/form-data`**: The POST body will be parsed as GraphQL
+    query string, which provides the `operations` parameter.
+    [GraphQL multipart request specification](https://github.com/jaydenseric/graphql-multipart-request-spec)
 
 ### Examples
 - [golang-graphql-playground](https://github.com/graphql-go/playground)

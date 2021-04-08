@@ -3,8 +3,10 @@ package handler
 import (
 	"encoding/json"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/graphql-go/graphql"
@@ -15,10 +17,16 @@ import (
 )
 
 const (
-	ContentTypeJSON           = "application/json"
-	ContentTypeGraphQL        = "application/graphql"
-	ContentTypeFormURLEncoded = "application/x-www-form-urlencoded"
+	ContentTypeJSON              = "application/json"
+	ContentTypeGraphQL           = "application/graphql"
+	ContentTypeFormURLEncoded    = "application/x-www-form-urlencoded"
+	ContentTypeMultipartFormData = "multipart/form-data"
 )
+
+type MultipartFile struct {
+	File   multipart.File
+	Header *multipart.FileHeader
+}
 
 type ResultCallbackFn func(ctx context.Context, params *graphql.Params, result *graphql.Result, responseBody []byte)
 
@@ -29,6 +37,7 @@ type Handler struct {
 	playground       bool
 	rootObjectFn     RootObjectFn
 	resultCallbackFn ResultCallbackFn
+	maxMemory        int64
 	formatErrorFn    func(err error) gqlerrors.FormattedError
 }
 
@@ -64,7 +73,7 @@ func getFromForm(values url.Values) *RequestOptions {
 }
 
 // RequestOptions Parses a http.Request into GraphQL request options struct
-func NewRequestOptions(r *http.Request) *RequestOptions {
+func NewRequestOptions(r *http.Request, maxMemory int64) *RequestOptions {
 	if reqOpt := getFromForm(r.URL.Query()); reqOpt != nil {
 		return reqOpt
 	}
@@ -102,6 +111,89 @@ func NewRequestOptions(r *http.Request) *RequestOptions {
 
 		return &RequestOptions{}
 
+	case ContentTypeMultipartFormData:
+		if err := r.ParseMultipartForm(maxMemory); err != nil {
+			// fmt.Printf("Parse Multipart Failed %v", err)
+			return &RequestOptions{}
+		}
+
+		// @TODO handle array case...
+
+		operationsParam := r.FormValue("operations")
+		var opts RequestOptions
+		if err := json.Unmarshal([]byte(operationsParam), &opts); err != nil {
+			// fmt.Printf("Parse Operations Failed %v", err)
+			return &RequestOptions{}
+		}
+
+		mapParam := r.FormValue("map")
+		mapValues := make(map[string]([]string))
+		if len(mapParam) != 0 {
+			if err := json.Unmarshal([]byte(mapParam), &mapValues); err != nil {
+				// fmt.Printf("Parse map Failed %v", err)
+				return &RequestOptions{}
+			}
+		}
+
+		variables := opts
+
+		for key, value := range mapValues {
+			for _, v := range value {
+				if file, header, err := r.FormFile(key); err == nil {
+
+					// Now set the path in ther variables
+					var node interface{} = variables
+
+					parts := strings.Split(v, ".")
+					last := parts[len(parts)-1]
+
+					for _, vv := range parts[:len(parts)-1] {
+						// fmt.Printf("Doing vv=%s type=%T parts=%v\n", vv, node, parts)
+						switch node.(type) {
+						case RequestOptions:
+							if vv == "variables" {
+								node = opts.Variables
+							} else {
+								// panic("Invalid top level tag")
+								return &RequestOptions{}
+							}
+						case map[string]interface{}:
+							node = node.(map[string]interface{})[vv]
+						case []interface{}:
+							if idx, err := strconv.ParseInt(vv, 10, 64); err == nil {
+								node = node.([]interface{})[idx]
+							} else {
+								// panic("Unable to lookup index")
+								return &RequestOptions{}
+							}
+						default:
+							// panic(fmt.Errorf("Unknown type %T", node))
+							return &RequestOptions{}
+						}
+					}
+
+					data := &MultipartFile{File: file, Header: header}
+
+					switch node.(type) {
+					case map[string]interface{}:
+						node.(map[string]interface{})[last] = data
+					case []interface{}:
+						if idx, err := strconv.ParseInt(last, 10, 64); err == nil {
+							node.([]interface{})[idx] = data
+						} else {
+							// panic("Unable to lookup index")
+							return &RequestOptions{}
+						}
+					default:
+						// panic(fmt.Errorf("Unknown last type %T", node))
+						return &RequestOptions{}
+					}
+				}
+			}
+		}
+
+		return &opts
+
 	case ContentTypeJSON:
 		fallthrough
 	default:
@@ -126,7 +218,7 @@ func NewRequestOptions(r *http.Request) *RequestOptions {
 // user-provided context.
 func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	// get query
-	opts := NewRequestOptions(r)
+	opts := NewRequestOptions(r, h.maxMemory)
 
 	// execute graphql query
 	params := graphql.Params{
@@ -203,15 +295,16 @@ type Config struct {
 	Playground       bool
 	RootObjectFn     RootObjectFn
 	ResultCallbackFn ResultCallbackFn
+	MaxMemory        int64
 	FormatErrorFn    func(err error) gqlerrors.FormattedError
 }
 
 func NewConfig() *Config {
 	return &Config{
-		Schema:     nil,
-		Pretty:     true,
-		GraphiQL:   true,
-		Playground: false,
+		Schema:    nil,
+		Pretty:    true,
+		GraphiQL:  true,
+		MaxMemory: 0,
 	}
 }
 
@@ -224,6 +317,11 @@ func New(p *Config) *Handler {
 		panic("undefined GraphQL schema")
 	}
 
+	maxMemory := p.MaxMemory
+	if maxMemory == 0 {
+		maxMemory = 32 << 20 // 32MB
+	}
+
 	return &Handler{
 		Schema:           p.Schema,
 		pretty:           p.Pretty,
@@ -231,6 +329,7 @@ func New(p *Config) *Handler {
 		playground:       p.Playground,
 		rootObjectFn:     p.RootObjectFn,
 		resultCallbackFn: p.ResultCallbackFn,
+		maxMemory:        maxMemory,
 		formatErrorFn:    p.FormatErrorFn,
 	}
 }

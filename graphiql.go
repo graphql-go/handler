@@ -10,7 +10,6 @@ import (
 
 // graphiqlData is the page data structure of the rendered GraphiQL page
 type graphiqlData struct {
-	GraphiqlVersion string
 	QueryString     string
 	VariablesString string
 	OperationName   string
@@ -51,7 +50,6 @@ func renderGraphiQL(w http.ResponseWriter, params graphql.Params) {
 	}
 
 	d := graphiqlData{
-		GraphiqlVersion: graphiqlVersion,
 		QueryString:     params.RequestString,
 		ResultString:    resString,
 		VariablesString: varsString,
@@ -64,9 +62,6 @@ func renderGraphiQL(w http.ResponseWriter, params graphql.Params) {
 
 	return
 }
-
-// graphiqlVersion is the current version of GraphiQL
-const graphiqlVersion = "0.11.11"
 
 // tmpl is the page template to render GraphiQL
 const graphiqlTemplate = `
@@ -97,12 +92,12 @@ add "&raw" to the end of the URL within a browser.
       height: 100vh;
     }
   </style>
-  <link href="//cdn.jsdelivr.net/npm/graphiql@{{ .GraphiqlVersion }}/graphiql.css" rel="stylesheet" />
+  <link href="https://unpkg.com/graphiql/graphiql.min.css" rel="stylesheet" />
   <script src="//cdn.jsdelivr.net/es6-promise/4.0.5/es6-promise.auto.min.js"></script>
   <script src="//cdn.jsdelivr.net/fetch/0.9.0/fetch.min.js"></script>
-  <script src="//cdn.jsdelivr.net/react/15.4.2/react.min.js"></script>
-  <script src="//cdn.jsdelivr.net/react/15.4.2/react-dom.min.js"></script>
-  <script src="//cdn.jsdelivr.net/npm/graphiql@{{ .GraphiqlVersion }}/graphiql.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/graphiql/graphiql.min.js"></script>
 </head>
 <body>
   <div id="graphiql">Loading...</div>
@@ -195,6 +190,9 @@ add "&raw" to the end of the URL within a browser.
         response: {{ .ResultString }},
         variables: {{ .VariablesString }},
         operationName: {{ .OperationName }},
+        shouldPersistHeaders: true,
+        editorTheme: "solarized dark",
+        headerEditorEnabled: true,
       }),
       document.getElementById('graphiql')
     );

@@ -10,6 +10,7 @@ import (
 
 // graphiqlData is the page data structure of the rendered GraphiQL page
 type graphiqlData struct {
+	GraphiqlVersion string
 	QueryString     string
 	VariablesString string
 	OperationName   string
@@ -50,6 +51,7 @@ func renderGraphiQL(w http.ResponseWriter, params graphql.Params) {
 	}
 
 	d := graphiqlData{
+		GraphiqlVersion: graphiqlVersion,
 		QueryString:     params.RequestString,
 		ResultString:    resString,
 		VariablesString: varsString,
@@ -62,6 +64,9 @@ func renderGraphiQL(w http.ResponseWriter, params graphql.Params) {
 
 	return
 }
+
+// graphiqlVersion is the current version of GraphiQL
+const graphiqlVersion = "0.2.2"
 
 // tmpl is the page template to render GraphiQL
 const graphiqlTemplate = `

@@ -103,6 +103,7 @@ add "&raw" to the end of the URL within a browser.
   <script crossorigin src="https://unpkg.com/react/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom/umd/react-dom.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/graphiql/graphiql.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.23.0/theme/solarized.css" />
 </head>
 <body>
   <div id="graphiql">Loading...</div>

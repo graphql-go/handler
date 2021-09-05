@@ -66,7 +66,7 @@ func renderGraphiQL(w http.ResponseWriter, params graphql.Params) {
 }
 
 // graphiqlVersion is the current version of GraphiQL
-const graphiqlVersion = "0.2.2"
+const graphiqlVersion = "0.11.11"
 
 // tmpl is the page template to render GraphiQL
 const graphiqlTemplate = `
@@ -197,7 +197,6 @@ add "&raw" to the end of the URL within a browser.
         variables: {{ .VariablesString }},
         operationName: {{ .OperationName }},
         shouldPersistHeaders: true,
-        editorTheme: "solarized dark",
         headerEditorEnabled: true,
       }),
       document.getElementById('graphiql')

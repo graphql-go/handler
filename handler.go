@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -27,6 +28,7 @@ type Handler struct {
 	pretty           bool
 	graphiql         bool
 	playground       bool
+	playgroundConfig *PlaygroundConfig
 	rootObjectFn     RootObjectFn
 	resultCallbackFn ResultCallbackFn
 	formatErrorFn    func(err error) gqlerrors.FormattedError
@@ -162,7 +164,15 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 		acceptHeader := r.Header.Get("Accept")
 		_, raw := r.URL.Query()["raw"]
 		if !raw && !strings.Contains(acceptHeader, "application/json") && strings.Contains(acceptHeader, "text/html") {
-			renderPlayground(w, r)
+
+			endpoint := r.URL.Path
+			subscriptionEndpoint := fmt.Sprintf("ws://%v/subscriptions", r.Host)
+			if h.playgroundConfig != nil {
+				endpoint = h.playgroundConfig.Endpoint
+				subscriptionEndpoint = h.playgroundConfig.SubscriptionEndpoint
+			}
+
+			renderPlayground(w, r, endpoint, subscriptionEndpoint)
 			return
 		}
 	}
@@ -196,11 +206,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // RootObjectFn allows a user to generate a RootObject per request
 type RootObjectFn func(ctx context.Context, r *http.Request) map[string]interface{}
 
+type PlaygroundConfig struct {
+	Endpoint             string
+	SubscriptionEndpoint string
+}
+
 type Config struct {
 	Schema           *graphql.Schema
 	Pretty           bool
 	GraphiQL         bool
 	Playground       bool
+	PlaygroundConfig *PlaygroundConfig
 	RootObjectFn     RootObjectFn
 	ResultCallbackFn ResultCallbackFn
 	FormatErrorFn    func(err error) gqlerrors.FormattedError
@@ -208,10 +224,11 @@ type Config struct {
 
 func NewConfig() *Config {
 	return &Config{
-		Schema:     nil,
-		Pretty:     true,
-		GraphiQL:   true,
-		Playground: false,
+		Schema:           nil,
+		Pretty:           true,
+		GraphiQL:         true,
+		Playground:       false,
+		PlaygroundConfig: nil,
 	}
 }
 
@@ -229,6 +246,7 @@ func New(p *Config) *Handler {
 		pretty:           p.Pretty,
 		graphiql:         p.GraphiQL,
 		playground:       p.Playground,
+		playgroundConfig: p.PlaygroundConfig,
 		rootObjectFn:     p.RootObjectFn,
 		resultCallbackFn: p.ResultCallbackFn,
 		formatErrorFn:    p.FormatErrorFn,

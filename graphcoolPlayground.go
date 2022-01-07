@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"html/template"
 	"net/http"
 )
@@ -14,7 +13,7 @@ type playgroundData struct {
 }
 
 // renderPlayground renders the Playground GUI
-func renderPlayground(w http.ResponseWriter, r *http.Request) {
+func renderPlayground(w http.ResponseWriter, r *http.Request, endpoint string, subscriptionEndpoint string) {
 	t := template.New("Playground")
 	t, err := t.Parse(graphcoolPlaygroundTemplate)
 	if err != nil {
@@ -24,16 +23,14 @@ func renderPlayground(w http.ResponseWriter, r *http.Request) {
 
 	d := playgroundData{
 		PlaygroundVersion:    graphcoolPlaygroundVersion,
-		Endpoint:             r.URL.Path,
-		SubscriptionEndpoint: fmt.Sprintf("ws://%v/subscriptions", r.Host),
+		Endpoint:             endpoint,
+		SubscriptionEndpoint: subscriptionEndpoint,
 		SetTitle:             true,
 	}
 	err = t.ExecuteTemplate(w, "index", d)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-
-	return
 }
 
 const graphcoolPlaygroundVersion = "1.5.2"

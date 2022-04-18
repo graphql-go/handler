@@ -143,7 +143,7 @@ add "&raw" to the end of the URL within a browser.
     var fetchURL = locationQuery(otherParams);
 
     // Defines a GraphQL fetcher using the fetch API.
-    function graphQLFetcher(graphQLParams, opts = {headers: {}) {
+    function graphQLFetcher(graphQLParams, opts = {headers: {}}) {
       return fetch(fetchURL, {
         method: 'post',
         headers: {

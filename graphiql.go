@@ -66,7 +66,7 @@ func renderGraphiQL(w http.ResponseWriter, params graphql.Params) {
 }
 
 // graphiqlVersion is the current version of GraphiQL
-const graphiqlVersion = "0.11.11"
+const graphiqlVersion = "1.8.7"
 
 // tmpl is the page template to render GraphiQL
 const graphiqlTemplate = `
@@ -100,8 +100,8 @@ add "&raw" to the end of the URL within a browser.
   <link href="//cdn.jsdelivr.net/npm/graphiql@{{ .GraphiqlVersion }}/graphiql.css" rel="stylesheet" />
   <script src="//cdn.jsdelivr.net/es6-promise/4.0.5/es6-promise.auto.min.js"></script>
   <script src="//cdn.jsdelivr.net/fetch/0.9.0/fetch.min.js"></script>
-  <script src="//cdn.jsdelivr.net/react/15.4.2/react.min.js"></script>
-  <script src="//cdn.jsdelivr.net/react/15.4.2/react-dom.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/react@16.14.0/umd/react.production.min.js"></script>
+  <script src="//cdn.jsdelivr.net/npm/react-dom@16.14.0/umd/react-dom.production.min.js"></script>
   <script src="//cdn.jsdelivr.net/npm/graphiql@{{ .GraphiqlVersion }}/graphiql.min.js"></script>
 </head>
 <body>
@@ -143,12 +143,13 @@ add "&raw" to the end of the URL within a browser.
     var fetchURL = locationQuery(otherParams);
 
     // Defines a GraphQL fetcher using the fetch API.
-    function graphQLFetcher(graphQLParams) {
+    function graphQLFetcher(graphQLParams, opts = {headers: {}}) {
       return fetch(fetchURL, {
         method: 'post',
         headers: {
           'Accept': 'application/json',
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...opts.headers
         },
         body: JSON.stringify(graphQLParams),
         credentials: 'include',

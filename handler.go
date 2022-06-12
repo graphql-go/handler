@@ -10,6 +10,8 @@ import (
 	"github.com/graphql-go/graphql"
 
 	"context"
+
+	"github.com/graphql-go/graphql/gqlerrors"
 )
 
 const (
@@ -19,13 +21,18 @@ const (
 	ContentTypeMultipartFormData = "multipart/form-data"
 )
 
+type ResultCallbackFn func(ctx context.Context, params *graphql.Params, result *graphql.Result, responseBody []byte)
+
 type Handler struct {
-	Schema       *graphql.Schema
-	pretty       bool
-	graphiql     bool
-	playground   bool
-	rootObjectFn RootObjectFn
+	Schema           *graphql.Schema
+	pretty           bool
+	graphiql         bool
+	playground       bool
+	rootObjectFn     RootObjectFn
+	resultCallbackFn ResultCallbackFn
+	formatErrorFn    func(err error) gqlerrors.FormattedError
 }
+
 type RequestOptions struct {
 	Query         string                 `json:"query" url:"query" schema:"query"`
 	Variables     map[string]interface{} `json:"variables" url:"variables" schema:"variables"`
@@ -63,7 +70,7 @@ func NewRequestOptions(r *http.Request) *RequestOptions {
 		return reqOpt
 	}
 
-	if r.Method != "POST" {
+	if r.Method != http.MethodPost {
 		return &RequestOptions{}
 	}
 
@@ -143,6 +150,14 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 	}
 	result := graphql.Do(params)
 
+	if formatErrorFn := h.formatErrorFn; formatErrorFn != nil && len(result.Errors) > 0 {
+		formatted := make([]gqlerrors.FormattedError, len(result.Errors))
+		for i, formattedError := range result.Errors {
+			formatted[i] = formatErrorFn(formattedError.OriginalError())
+		}
+		result.Errors = formatted
+	}
+
 	if h.graphiql {
 		acceptHeader := r.Header.Get("Accept")
 		_, raw := r.URL.Query()["raw"]
@@ -164,16 +179,21 @@ func (h *Handler) ContextHandler(ctx context.Context, w http.ResponseWriter, r *
 	// use proper JSON Header
 	w.Header().Add("Content-Type", "application/json; charset=utf-8")
 
+	var buff []byte
 	if h.pretty {
 		w.WriteHeader(http.StatusOK)
-		buff, _ := json.MarshalIndent(result, "", "\t")
+		buff, _ = json.MarshalIndent(result, "", "\t")
 
 		w.Write(buff)
 	} else {
 		w.WriteHeader(http.StatusOK)
-		buff, _ := json.Marshal(result)
+		buff, _ = json.Marshal(result)
 
 		w.Write(buff)
+	}
+
+	if h.resultCallbackFn != nil {
+		h.resultCallbackFn(ctx, &params, result, buff)
 	}
 }
 
@@ -186,11 +206,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type RootObjectFn func(ctx context.Context, r *http.Request) map[string]interface{}
 
 type Config struct {
-	Schema       *graphql.Schema
-	Pretty       bool
-	GraphiQL     bool
-	Playground   bool
-	RootObjectFn RootObjectFn
+	Schema           *graphql.Schema
+	Pretty           bool
+	GraphiQL         bool
+	Playground       bool
+	RootObjectFn     RootObjectFn
+	ResultCallbackFn ResultCallbackFn
+	FormatErrorFn    func(err error) gqlerrors.FormattedError
 }
 
 func NewConfig() *Config {
@@ -206,15 +228,18 @@ func New(p *Config) *Handler {
 	if p == nil {
 		p = NewConfig()
 	}
+
 	if p.Schema == nil {
 		panic("undefined GraphQL schema")
 	}
 
 	return &Handler{
-		Schema:       p.Schema,
-		pretty:       p.Pretty,
-		graphiql:     p.GraphiQL,
-		playground:   p.Playground,
-		rootObjectFn: p.RootObjectFn,
+		Schema:           p.Schema,
+		pretty:           p.Pretty,
+		graphiql:         p.GraphiQL,
+		playground:       p.Playground,
+		rootObjectFn:     p.RootObjectFn,
+		resultCallbackFn: p.ResultCallbackFn,
+		formatErrorFn:    p.FormatErrorFn,
 	}
 }

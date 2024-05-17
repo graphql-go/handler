@@ -290,3 +290,113 @@ func TestHandler_BasicQuery_WithFormatErrorFn(t *testing.T) {
 		t.Fatalf("wrong result, graphql result diff: %v", testutil.Diff(expected, result))
 	}
 }
+
+func TestPlaygroundWithDefaultConfig(t *testing.T) {
+	query := graphql.NewObject(graphql.ObjectConfig{
+		Name: "Query",
+		Fields: graphql.Fields{
+			"ping": &graphql.Field{
+				Name: "ping",
+				Type: graphql.String,
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					return "OK", nil
+				},
+			},
+		},
+	})
+
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query: query,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req, err := http.NewRequest("GET", "/graphql", nil)
+	req.Header.Set("Accept", "text/html")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	h := handler.New(&handler.Config{
+		Schema:     &schema,
+		Playground: true,
+	})
+
+	resp := httptest.NewRecorder()
+	h.ContextHandler(context.Background(), resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatalf("unexpected server response %v", resp.Code)
+	}
+
+	expectedBodyContains := []string{
+		"GraphQL Playground",
+		`endpoint: "/graphql"`,
+		`subscriptionEndpoint: "ws:///subscriptions"`,
+	}
+	respBody := resp.Body.String()
+
+	for _, e := range expectedBodyContains {
+		if !strings.Contains(respBody, e) {
+			t.Fatalf("wrong body, expected %s to contain %s", respBody, e)
+		}
+	}
+}
+
+func TestPlaygroundWithCustomConfig(t *testing.T) {
+	query := graphql.NewObject(graphql.ObjectConfig{
+		Name: "Query",
+		Fields: graphql.Fields{
+			"ping": &graphql.Field{
+				Name: "ping",
+				Type: graphql.String,
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					return "OK", nil
+				},
+			},
+		},
+	})
+
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query: query,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req, err := http.NewRequest("GET", "/custom-path/graphql", nil)
+	req.Header.Set("Accept", "text/html")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	h := handler.New(&handler.Config{
+		Schema:     &schema,
+		Playground: true,
+		PlaygroundConfig: &handler.PlaygroundConfig{
+			Endpoint:             "/custom-path/graphql",
+			SubscriptionEndpoint: "/custom-path/ws",
+		},
+	})
+
+	resp := httptest.NewRecorder()
+	h.ContextHandler(context.Background(), resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatalf("unexpected server response %v", resp.Code)
+	}
+
+	expectedBodyContains := []string{
+		"GraphQL Playground",
+		`endpoint: "/custom-path/graphql"`,
+		`subscriptionEndpoint: "/custom-path/ws"`,
+	}
+	respBody := resp.Body.String()
+
+	for _, e := range expectedBodyContains {
+		if !strings.Contains(respBody, e) {
+			t.Fatalf("wrong body, expected %s to contain %s", respBody, e)
+		}
+	}
+}

@@ -36,6 +36,8 @@ h := handler.New(&handler.Config{
 	Playground: true,
 })
 ```
+The default url path is same with the path passed in `http.Handle("/graphql", h)` method for `GraphiQL` and `Playground` configurations.
+If both of `GraphiQL` and `Playground` configurations are `true`, GraphiQL will be used. 
 
 ### Details
 
